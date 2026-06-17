@@ -496,8 +496,6 @@ Columns:
 
 \* id
 
-\* owner\_profile\_id
-
 \* country\_id
 
 \* city\_id
@@ -1006,6 +1004,16 @@ Ownership Types:
 
 
 
+Event Owner Type Values:
+
+
+
+\* company
+
+\* platform
+
+
+
 Columns:
 
 
@@ -1013,6 +1021,8 @@ Columns:
 \* id
 
 \* company\_id
+
+\* event\_owner\_type
 
 \* created\_by
 
@@ -1523,6 +1533,8 @@ Columns:
 \* reviewed\_by
 
 \* reviewed\_at
+
+\* resolution\_note
 
 \* created\_at
 
@@ -2407,6 +2419,4 @@ The schema is considered successful when it:
 
 
 End of Document
-
-
 
