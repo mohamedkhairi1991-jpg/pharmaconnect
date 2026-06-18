@@ -11,6 +11,7 @@ workspace:
   - packages/pharmaconnect_core
   - packages/pharmaconnect_backend
   - packages/pharmaconnect_design_system
+  - packages/pharmaconnect_identity
   - packages/pharmaconnect_l10n
 
 dev_dependencies:

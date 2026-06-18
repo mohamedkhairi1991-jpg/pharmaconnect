@@ -21,6 +21,8 @@ dependencies:
     path: ../../packages/pharmaconnect_core
   pharmaconnect_design_system:
     path: ../../packages/pharmaconnect_design_system
+  pharmaconnect_identity:
+    path: ../../packages/pharmaconnect_identity
   pharmaconnect_l10n:
     path: ../../packages/pharmaconnect_l10n
 
