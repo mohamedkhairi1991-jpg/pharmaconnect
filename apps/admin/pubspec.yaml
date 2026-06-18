@@ -1,0 +1,33 @@
+name: pharmaconnect_admin
+description: PharmaConnect administration web application.
+publish_to: none
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.12.2
+
+resolution: workspace
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  flutter_riverpod: ^3.0.0
+  go_router: ^17.0.0
+  pharmaconnect_backend:
+    path: ../../packages/pharmaconnect_backend
+  pharmaconnect_core:
+    path: ../../packages/pharmaconnect_core
+  pharmaconnect_design_system:
+    path: ../../packages/pharmaconnect_design_system
+  pharmaconnect_l10n:
+    path: ../../packages/pharmaconnect_l10n
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true

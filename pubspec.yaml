@@ -1,0 +1,17 @@
+name: pharmaconnect_workspace
+description: PharmaConnect Flutter workspace.
+publish_to: none
+
+environment:
+  sdk: ^3.12.2
+
+workspace:
+  - apps/mobile
+  - apps/admin
+  - packages/pharmaconnect_core
+  - packages/pharmaconnect_backend
+  - packages/pharmaconnect_design_system
+  - packages/pharmaconnect_l10n
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
