@@ -1,16 +1,20 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../client/supabase_client_provider.dart';
+import 'auth_repository_provider.dart';
+import 'auth_session_state.dart';
+import 'auth_state_provider.dart';
 
-final StreamProvider<User?> authUserProvider = StreamProvider<User?>(
-  (Ref ref) async* {
-    final GoTrueClient auth = ref.watch(supabaseClientProvider).auth;
+final Provider<AsyncValue<String?>> authUserIdProvider =
+    Provider<AsyncValue<String?>>(
+      (Ref ref) => ref
+          .watch(authStateProvider)
+          .whenData((AuthSessionState state) => state.userId),
+    );
 
-    yield auth.currentUser;
-
-    await for (final AuthState state in auth.onAuthStateChange) {
-      yield state.session?.user;
-    }
-  },
+@Deprecated('Use authStateProvider or authUserIdProvider.')
+final StreamProvider<String?> authUserProvider = StreamProvider<String?>(
+  (Ref ref) => ref
+      .watch(authRepositoryProvider)
+      .observeSession()
+      .map((AuthSessionState state) => state.userId),
 );

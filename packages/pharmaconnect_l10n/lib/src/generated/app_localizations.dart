@@ -103,6 +103,288 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'PharmaConnect'**
   String get appName;
+
+  /// No description provided for @signInTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in'**
+  String get signInTitle;
+
+  /// No description provided for @signUpTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Create account'**
+  String get signUpTitle;
+
+  /// No description provided for @emailLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Email'**
+  String get emailLabel;
+
+  /// No description provided for @passwordLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get passwordLabel;
+
+  /// No description provided for @confirmPasswordLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm password'**
+  String get confirmPasswordLabel;
+
+  /// No description provided for @signInAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in'**
+  String get signInAction;
+
+  /// No description provided for @signUpAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Create account'**
+  String get signUpAction;
+
+  /// No description provided for @signOutAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out'**
+  String get signOutAction;
+
+  /// No description provided for @forgotPasswordAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Forgot password?'**
+  String get forgotPasswordAction;
+
+  /// No description provided for @resetPasswordTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset password'**
+  String get resetPasswordTitle;
+
+  /// No description provided for @resetPasswordAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Update password'**
+  String get resetPasswordAction;
+
+  /// No description provided for @sendResetLinkAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Send reset link'**
+  String get sendResetLinkAction;
+
+  /// No description provided for @resendConfirmationAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Resend confirmation'**
+  String get resendConfirmationAction;
+
+  /// No description provided for @checkEmailTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Check your email'**
+  String get checkEmailTitle;
+
+  /// No description provided for @checkEmailMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Use the confirmation link in your email before signing in.'**
+  String get checkEmailMessage;
+
+  /// No description provided for @resetEmailSentMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'If an account exists, a password reset link has been sent.'**
+  String get resetEmailSentMessage;
+
+  /// No description provided for @confirmationSentMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'A new confirmation email has been requested.'**
+  String get confirmationSentMessage;
+
+  /// No description provided for @passwordUpdatedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Your password was updated. Sign in again.'**
+  String get passwordUpdatedMessage;
+
+  /// No description provided for @pendingAccountTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Account setup pending'**
+  String get pendingAccountTitle;
+
+  /// No description provided for @pendingAccountMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account is authenticated but is not yet assigned to an approved platform role.'**
+  String get pendingAccountMessage;
+
+  /// No description provided for @accountUnavailableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Account unavailable'**
+  String get accountUnavailableTitle;
+
+  /// No description provided for @accountUnavailableMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This account cannot currently access PharmaConnect.'**
+  String get accountUnavailableMessage;
+
+  /// No description provided for @unauthorizedClientTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Use the correct application'**
+  String get unauthorizedClientTitle;
+
+  /// No description provided for @unauthorizedClientMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This account is not authorized to use the administration portal.'**
+  String get unauthorizedClientMessage;
+
+  /// No description provided for @sessionLoadingMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Restoring your session…'**
+  String get sessionLoadingMessage;
+
+  /// No description provided for @sessionErrorMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'We could not restore your session.'**
+  String get sessionErrorMessage;
+
+  /// No description provided for @retryAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get retryAction;
+
+  /// No description provided for @backToSignInAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to sign in'**
+  String get backToSignInAction;
+
+  /// No description provided for @createAccountPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Need an account?'**
+  String get createAccountPrompt;
+
+  /// No description provided for @alreadyHaveAccountPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Already have an account?'**
+  String get alreadyHaveAccountPrompt;
+
+  /// No description provided for @requiredFieldError.
+  ///
+  /// In en, this message translates to:
+  /// **'This field is required.'**
+  String get requiredFieldError;
+
+  /// No description provided for @invalidEmailError.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid email address.'**
+  String get invalidEmailError;
+
+  /// No description provided for @passwordLengthError.
+  ///
+  /// In en, this message translates to:
+  /// **'Use at least 8 characters.'**
+  String get passwordLengthError;
+
+  /// No description provided for @passwordMismatchError.
+  ///
+  /// In en, this message translates to:
+  /// **'Passwords do not match.'**
+  String get passwordMismatchError;
+
+  /// No description provided for @invalidCredentialsError.
+  ///
+  /// In en, this message translates to:
+  /// **'The email or password is incorrect.'**
+  String get invalidCredentialsError;
+
+  /// No description provided for @emailNotConfirmedError.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm your email before signing in.'**
+  String get emailNotConfirmedError;
+
+  /// No description provided for @alreadyRegisteredError.
+  ///
+  /// In en, this message translates to:
+  /// **'An account may already exist. Try signing in or resetting your password.'**
+  String get alreadyRegisteredError;
+
+  /// No description provided for @weakPasswordError.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a stronger password.'**
+  String get weakPasswordError;
+
+  /// No description provided for @rateLimitedError.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many attempts. Please wait and try again.'**
+  String get rateLimitedError;
+
+  /// No description provided for @invalidRecoveryLinkError.
+  ///
+  /// In en, this message translates to:
+  /// **'This recovery link is invalid or expired.'**
+  String get invalidRecoveryLinkError;
+
+  /// No description provided for @sessionExpiredError.
+  ///
+  /// In en, this message translates to:
+  /// **'Your session expired. Sign in again.'**
+  String get sessionExpiredError;
+
+  /// No description provided for @networkError.
+  ///
+  /// In en, this message translates to:
+  /// **'Check your connection and try again.'**
+  String get networkError;
+
+  /// No description provided for @unexpectedError.
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong. Please try again.'**
+  String get unexpectedError;
+
+  /// No description provided for @mobileAuthenticatedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Authenticated'**
+  String get mobileAuthenticatedTitle;
+
+  /// No description provided for @mobileAuthenticatedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Your authenticated workspace will be added in a later phase.'**
+  String get mobileAuthenticatedMessage;
+
+  /// No description provided for @adminAuthenticatedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Administration session'**
+  String get adminAuthenticatedTitle;
+
+  /// No description provided for @adminAuthenticatedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'The administration dashboard will be added in a later phase.'**
+  String get adminAuthenticatedMessage;
 }
 
 class _AppLocalizationsDelegate

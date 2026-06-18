@@ -8,8 +8,8 @@ void main() {
     final _FakeIdentityRepository repository = _FakeIdentityRepository();
     final ProviderContainer container = ProviderContainer(
       overrides: [
-        authUserProvider.overrideWithValue(
-          const AsyncData(null),
+        authStateProvider.overrideWithValue(
+          const AsyncData(AuthSessionState.signedOut()),
         ),
         identityRepositoryProvider.overrideWithValue(repository),
       ],

@@ -58,12 +58,9 @@ class SupabaseIdentityRepository implements IdentityRepository {
     if (response is List<dynamic> &&
         response.length == 1 &&
         response.single is Map<String, dynamic>) {
-      return (response.single as Map<String, dynamic>)
-          .cast<String, Object?>();
+      return (response.single as Map<String, dynamic>).cast<String, Object?>();
     }
 
-    throw const FormatException(
-      'The profile response was not a JSON object.',
-    );
+    throw const FormatException('The profile response was not a JSON object.');
   }
 }

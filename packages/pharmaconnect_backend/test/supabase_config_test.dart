@@ -3,7 +3,12 @@ import 'package:pharmaconnect_backend/pharmaconnect_backend.dart';
 
 void main() {
   test('empty Supabase placeholders are not configured', () {
-    const SupabaseConfig config = SupabaseConfig(url: '', anonKey: '');
+    const SupabaseConfig config = SupabaseConfig(
+      url: '',
+      anonKey: '',
+      mobileAuthCallbackUrl: 'com.pharmaconnect.mobile://auth/callback',
+      adminAuthCallbackUrl: 'http://localhost:3000/auth/callback',
+    );
 
     expect(config.isConfigured, isFalse);
   });

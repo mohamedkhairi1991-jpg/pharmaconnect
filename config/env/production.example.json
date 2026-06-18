@@ -1,5 +1,7 @@
 {
   "APP_ENVIRONMENT": "production",
   "SUPABASE_URL": "",
-  "SUPABASE_ANON_KEY": ""
+  "SUPABASE_ANON_KEY": "",
+  "MOBILE_AUTH_CALLBACK_URL": "",
+  "ADMIN_AUTH_CALLBACK_URL": ""
 }

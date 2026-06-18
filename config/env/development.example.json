@@ -1,5 +1,7 @@
 {
   "APP_ENVIRONMENT": "development",
   "SUPABASE_URL": "",
-  "SUPABASE_ANON_KEY": ""
+  "SUPABASE_ANON_KEY": "",
+  "MOBILE_AUTH_CALLBACK_URL": "com.pharmaconnect.mobile://auth/callback",
+  "ADMIN_AUTH_CALLBACK_URL": "http://localhost:3000/auth/callback"
 }

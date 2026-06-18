@@ -5,11 +5,7 @@ import 'package:pharmaconnect_backend/pharmaconnect_backend.dart';
 void main() {
   test('auth user provider can be overridden for consumers', () async {
     final ProviderContainer container = ProviderContainer(
-      overrides: [
-        authUserProvider.overrideWithValue(
-          const AsyncData(null),
-        ),
-      ],
+      overrides: [authUserProvider.overrideWithValue(const AsyncData(null))],
     );
     addTearDown(container.dispose);
 

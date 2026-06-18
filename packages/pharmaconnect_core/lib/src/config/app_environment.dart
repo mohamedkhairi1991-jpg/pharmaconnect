@@ -19,6 +19,4 @@ enum AppEnvironment {
 }
 
 final Provider<AppEnvironment> appEnvironmentProvider =
-    Provider<AppEnvironment>(
-      (Ref ref) => AppEnvironment.fromDartDefines(),
-    );
+    Provider<AppEnvironment>((Ref ref) => AppEnvironment.fromDartDefines());

@@ -1,4 +1,10 @@
+export 'src/auth/auth_failure.dart';
+export 'src/auth/auth_repository.dart';
+export 'src/auth/auth_repository_provider.dart';
+export 'src/auth/auth_session_state.dart';
+export 'src/auth/auth_state_provider.dart';
 export 'src/auth/auth_user_provider.dart';
+export 'src/auth/supabase_auth_repository.dart';
 export 'src/client/supabase_client_provider.dart';
 export 'src/config/supabase_config.dart';
 export 'src/initialization/initialize_supabase.dart';

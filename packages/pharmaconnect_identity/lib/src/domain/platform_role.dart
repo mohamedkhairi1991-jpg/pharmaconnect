@@ -11,9 +11,7 @@ enum PlatformRole {
   static PlatformRole fromDatabaseValue(String value) {
     return PlatformRole.values.firstWhere(
       (PlatformRole role) => role.databaseValue == value,
-      orElse: () => throw FormatException(
-        'Unknown platform role: $value',
-      ),
+      orElse: () => throw FormatException('Unknown platform role: $value'),
     );
   }
 }

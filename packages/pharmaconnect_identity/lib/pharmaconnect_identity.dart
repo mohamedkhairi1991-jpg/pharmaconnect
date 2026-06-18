@@ -1,8 +1,10 @@
 export 'src/application/current_profile_provider.dart';
 export 'src/application/identity_repository_provider.dart';
+export 'src/application/session_principal_provider.dart';
 export 'src/data/profile_dto.dart';
 export 'src/data/supabase_identity_repository.dart';
 export 'src/domain/identity_repository.dart';
 export 'src/domain/platform_role.dart';
 export 'src/domain/profile.dart';
 export 'src/domain/profile_status.dart';
+export 'src/domain/session_principal.dart';

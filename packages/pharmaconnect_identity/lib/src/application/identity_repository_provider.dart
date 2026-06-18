@@ -6,7 +6,6 @@ import '../domain/identity_repository.dart';
 
 final Provider<IdentityRepository> identityRepositoryProvider =
     Provider<IdentityRepository>(
-      (Ref ref) => SupabaseIdentityRepository(
-        ref.watch(supabaseClientProvider),
-      ),
+      (Ref ref) =>
+          SupabaseIdentityRepository(ref.watch(supabaseClientProvider)),
     );
