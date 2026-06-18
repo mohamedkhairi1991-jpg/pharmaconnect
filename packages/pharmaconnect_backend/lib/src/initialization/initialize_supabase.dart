@@ -9,6 +9,6 @@ Future<void> initializeSupabaseIfConfigured(SupabaseConfig config) async {
 
   await Supabase.initialize(
     url: config.url,
-    anonKey: config.anonKey,
+    publishableKey: config.anonKey,
   );
 }

@@ -15,7 +15,7 @@ Future<void> bootstrapMobileApp() async {
 
   runApp(
     ProviderScope(
-      overrides: <Override>[
+      overrides: [
         appEnvironmentProvider.overrideWithValue(environment),
         supabaseConfigProvider.overrideWithValue(supabaseConfig),
       ],
