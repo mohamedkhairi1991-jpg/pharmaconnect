@@ -76,15 +76,15 @@ Platform Roles:
 
 
 
-Healthcare professionals may:
+Approved physicians may:
 
 
 
-\- View approved products.
+\- View official admin-published catalog products.
 
-\- Search products.
+\- Search the official doctor-facing catalog.
 
-\- Download approved brochures.
+\- Download brochures for official admin-published catalog products.
 
 \- View approved companies.
 
@@ -98,7 +98,7 @@ Healthcare professionals may:
 
 
 
-Healthcare professionals may NOT:
+Approved physicians may NOT:
 
 
 
@@ -124,11 +124,11 @@ Healthcare professionals may NOT:
 
 
 
-Pharmacists follow the same permissions as healthcare professionals.
+Pharmacist official catalog access is not enabled in MVP.
 
 
 
-No additional administrative privileges are granted.
+Enabling pharmacist catalog access requires explicit product-owner approval and a later architecture amendment.
 
 
 
@@ -684,9 +684,9 @@ SELECT
 
 
 
-\- Public users may view active products.
+\- Anonymous users may not view official catalog products.
 
-\- Healthcare professionals may view active products.
+\- Authenticated active approved physicians may view only official admin-published products of verified companies designated `marketed_in_iraq`.
 
 \- Company users may view products belonging to their company.
 
@@ -710,13 +710,13 @@ UPDATE
 
 
 
-\- Company Admin.
+\- Company Admin and Product Manager may update only their own company records while `draft` or `changes_requested`, plus eligible submitted-record withdrawal through trusted logic.
 
-\- Product Manager.
+\- Admin controls official review, publication, hiding, restoration, and archival.
 
-\- Admin.
+\- Super Admin controls official review, publication, hiding, restoration, and archival.
 
-\- Super Admin.
+\- No company role may set an official product to `published` or directly modify an official published record.
 
 
 

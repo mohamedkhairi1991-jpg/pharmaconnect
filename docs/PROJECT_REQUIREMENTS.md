@@ -14,7 +14,7 @@ PharmaConnect is a multi-country pharmaceutical engagement platform designed for
 
 The platform enables healthcare professionals to discover pharmaceutical products, search by brand or generic name, explore company profiles, download brochures, and follow educational activities.
 
-Pharmaceutical companies can manage their digital presence, publish products, promote events, run campaigns, and access engagement analytics.
+Pharmaceutical companies can manage their digital presence, publish clearly labeled company-provided content within their own company pages, submit products for official catalog review, promote events, run campaigns, and access engagement analytics.
 
 PharmaConnect is not intended to provide medical advice, clinical decision support, electronic prescribing, or patient management functionality.
 
@@ -95,7 +95,7 @@ Requirements:
 Includes:
 
 - Physicians
-- Pharmacists
+- Pharmacists, except that official catalog access is not enabled for pharmacists in MVP unless explicitly approved later
 
 Capabilities:
 
@@ -114,7 +114,8 @@ Capabilities:
 Capabilities:
 
 - Company Profile Management
-- Product Publishing
+- Company-Page Product Listing Publication
+- Official Catalog Product Submission
 - Product Editing
 - Brochure Upload
 - Campaign Management
@@ -271,15 +272,26 @@ All users belong to a single company.
 
 # 14. Publishing Model
 
-Verified companies may publish products directly.
+PharmaConnect has two distinct publication levels.
 
-No per-product approval workflow exists.
+Verified companies may publish clearly labeled company-provided information within their own company pages. This may include company profile information and company-owned product listings. Company-page publication does not create an official catalog product and does not confer platform approval.
 
-Companies are responsible for all information they publish.
+Companies may create, edit, submit, and withdraw their own official catalog submissions. Companies cannot directly publish official doctor-facing catalog records.
+
+Only an active admin or super admin may approve and publish an official catalog product. In the official catalog, `published` means reviewed, platform-approved, and explicitly admin-published for doctor-facing discovery.
+
+Company-page listings and official catalog products have separate lifecycle states and data authority. Company-provided content must be visibly distinguished from official catalog content.
+
+Neither publication level represents stock, supply, pricing, ordering, or commercial availability.
+
+Companies are responsible for all company-provided information they publish.
 
 Administrators may:
 
+- Review and publish official catalog products
+- Return official submissions for correction
 - Hide Products
+- Restore Products
 - Archive Products
 - Suspend Companies
 
@@ -312,7 +324,7 @@ Administrators may:
 
 Administrative verification required.
 
-Only verified companies may publish public content.
+Only verified companies may publish company-provided content within their own company pages or submit products for official catalog review. Official doctor-facing catalog publication remains controlled by admin and super admin users.
 
 ---
 
@@ -404,7 +416,8 @@ Excluded:
 The MVP is considered successful when:
 
 - Healthcare professionals can register and search products.
-- Companies can publish and manage products.
+- Companies can publish clearly labeled company-page content and manage official catalog submissions.
+- Administrators can review and publish official doctor-facing catalog products.
 - Administrators can govern the platform.
 - Product discovery is fast and reliable.
 - Sponsored content functions correctly.

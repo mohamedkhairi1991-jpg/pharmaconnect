@@ -486,7 +486,7 @@ Purpose:
 
 
 
-Represents pharmaceutical companies, scientific offices, manufacturers, distributors, and authorized healthcare industry organizations.
+Represents pharmaceutical companies, scientific offices, manufacturers, and authorized pharmaceutical organizations. Distributors, pharmacies, warehouses, suppliers, and supply-chain entities are outside MVP scope.
 
 
 
@@ -544,13 +544,17 @@ Rules:
 
 
 
-\* Only verified companies may publish public products.
+\* Verified companies may publish clearly labeled company-provided content within their own company pages.
+
+\* Verified companies may submit official catalog products for administrative review but may not directly publish them.
+
+\* Only an active admin or super admin may publish an official doctor-facing catalog product.
 
 \* A company may contain multiple users.
 
 \* Products are retained even if the company becomes inactive.
 
-\* Companies are responsible for all information they publish.
+\* Companies are responsible for all company-provided information they publish.
 
 
 
@@ -1872,7 +1876,7 @@ Access:
 
 \* Company users can upload images for their own products.
 
-\* Public read access for approved products.
+\* Doctor-facing read access only for official admin-published catalog products.
 
 
 
@@ -1894,7 +1898,7 @@ Access:
 
 \* Company users can upload package images.
 
-\* Public read access for approved products.
+\* Doctor-facing read access only for official admin-published catalog products.
 
 
 
@@ -2400,7 +2404,7 @@ The schema is considered successful when it:
 
 \* Supports pharmaceutical companies.
 
-\* Supports product publishing.
+\* Supports separate company-page publication and admin-controlled official catalog publication.
 
 \* Supports product discovery.
 

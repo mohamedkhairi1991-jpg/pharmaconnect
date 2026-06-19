@@ -99,12 +99,16 @@ Trusted backend logic may be implemented through security-controlled PostgreSQL 
 
 ## 3.1 Product model decision
 
-A product is a canonical company-owned catalog item. Country-specific availability and pharmaceutical content are stored separately.
+A product is a canonical company-owned official catalog item. Country-specific market presence and pharmaceutical content are stored separately.
 
 The model is:
 
 ```text
 companies
+    → company_product_listings
+        → company_listing_translations
+
+official catalog
     → products
         → product_translations
         → product_markets
@@ -115,11 +119,13 @@ companies
         → product_search_keywords
 ```
 
+Company-page product listings and official catalog products are separate data authorities and do not share one lifecycle status. A company listing may reference an official product after approval through a nullable `official_product_id`, established through trusted logic. The reference never grants permission to mutate the official product. Creating a company listing never creates or publishes an official catalog product.
+
 This replaces the earlier rule that a product directly belongs to exactly one country.
 
 For the Iraq MVP:
 
-- Every publishable product must have one active Iraq `product_markets` record.
+- Every publishable official catalog product must have one Iraq `product_markets` record with `market_status = marketed_in_iraq`.
 - Launch scope is Iraq only.
 - Multi-country expansion is future.
 - The schema remains capable of adding other countries later without duplicating the canonical product.
@@ -140,6 +146,11 @@ Stores canonical product identity, ownership, classification, and lifecycle.
 | `status` | Required product lifecycle state. |
 | `created_by` | Required foreign key to `profiles.id`. |
 | `updated_by` | Required foreign key to `profiles.id`. |
+| `submitted_by` | Nullable foreign key to `profiles.id`; required while status is `submitted`. |
+| `submitted_at` | Nullable timestamp; required while status is `submitted`. |
+| `reviewed_by` | Nullable foreign key to `profiles.id`; populated by the reviewing admin or super admin. |
+| `reviewed_at` | Nullable timestamp; populated when an official review decision is made. |
+| `review_reason` | Nullable text; required when status is `changes_requested`. |
 | `published_by` | Nullable foreign key to `profiles.id`. |
 | `published_at` | Nullable timestamp. |
 | `hidden_by` | Nullable foreign key to `profiles.id`. |
@@ -155,7 +166,9 @@ Required constraints:
 
 - `company_id` cannot change after creation.
 - `generic_drug_id` is required when category is `prescription_drug` or `otc_drug`.
-- `published_by` and `published_at` are set when a product first becomes published.
+- `submitted_by` and `submitted_at` are required when status is `submitted`.
+- `reviewed_by`, `reviewed_at`, and `review_reason` are required when status is `changes_requested`.
+- `published_by` and `published_at` are set only by an active admin or super admin when an official catalog product becomes published.
 - `hidden_by`, `hidden_at`, and `hidden_reason` are required when status is `hidden`.
 - `archived_by` and `archived_at` are required when status is `archived`.
 - A product cannot be published unless its company is `verified`.
@@ -195,7 +208,7 @@ Required constraints:
 
 Purpose:
 
-Stores country-specific product availability and structured pharmaceutical information.
+Stores country-specific market presence and structured pharmaceutical information. It does not represent stock or real-time commercial availability.
 
 | Field | Requirement |
 |---|---|
@@ -206,15 +219,16 @@ Stores country-specific product availability and structured pharmaceutical infor
 | `dosage_form` | Required text. |
 | `route` | Required text. |
 | `pack_size` | Required text. |
-| `market_status` | Required: `draft`, `available`, `unavailable`, or `archived`. |
+| `market_status` | Required: `marketed_in_iraq`, `not_marketed`, or `discontinued`. |
 | `created_at` | Required timestamp. |
 | `updated_at` | Required timestamp. |
 
 Required constraints:
 
 - Unique `(product_id, country_id)`.
-- Iraq market data must exist and be `available` before MVP publication.
-- A market cannot be `available` when the parent product is archived.
+- Iraq market data must exist and be `marketed_in_iraq` before official catalog publication.
+- A market cannot be `marketed_in_iraq` when the parent product is archived.
+- These values describe catalog-level market presence only and never indicate pharmacy stock, distributor availability, office-level availability, ordering, pricing, or supply-chain status.
 
 Required indexes:
 
@@ -363,23 +377,24 @@ Required normalization:
 
 ---
 
-# 4. Product Publication Requirements
+# 4. Official Catalog Publication Requirements
 
-A product is publishable only when all of the following are true:
+An official catalog product may be published by an active admin or super admin only when all of the following are true:
 
 - Parent company status is `verified`.
 - Product category, drug class, and applicable generic drug are valid.
 - An English `product_translations` record exists.
 - At least one active specialty is assigned.
-- An Iraq `product_markets` record exists with `market_status = available`.
+- An Iraq `product_markets` record exists with `market_status = marketed_in_iraq`.
 - An English `product_market_translations` record exists for Iraq.
 - At least one product image exists.
 - At least one package image exists.
 - At least one current PDF brochure exists for Iraq.
 - All required pharmaceutical and clinical fields are non-empty.
-- The acting user is an active `company_admin` or `product_manager` for the owning company.
+- The product has been submitted by an active `company_admin` or `product_manager` for the owning company.
+- The acting publisher is an active admin or super admin.
 
-Publication does not require per-product administrator approval.
+Company-page publication is governed separately by Section 13. It does not satisfy these official catalog publication requirements and does not confer platform approval.
 
 ---
 
@@ -390,26 +405,36 @@ Publication does not require per-product administrator approval.
 | State | Meaning | Public/professional visibility |
 |---|---|---|
 | `draft` | Company-owned work in progress. | Not visible outside authorized company users and administrators. |
-| `published` | Company-published product satisfying all publication requirements. | Visible to approved healthcare professionals and authorized platform/company users. |
+| `submitted` | Company-owned product locked for administrative review. | Not visible to doctors. |
+| `changes_requested` | Product returned to the company with a mandatory review reason. | Not visible to doctors. |
+| `published` | Reviewed, platform-approved, and explicitly published by an active admin or super admin. | Visible in the official doctor-facing catalog. |
 | `hidden` | Product removed from discovery by an administrator for governance or safety reasons. | Not visible to healthcare professionals. |
 | `archived` | Retired product retained for history. | Not visible to healthcare professionals. |
 
-The term `approved product` must not be used. The correct public state is `published`.
+Within the official catalog, `published` means platform-approved and admin-published. Company-page publication must not use this status to imply official approval.
 
 ## 5.2 Allowed transitions
 
 | From | To | Authorized actor | Conditions |
 |---|---|---|---|
 | New | `draft` | Company admin or product manager | Product belongs to actor’s active company. |
-| `draft` | `published` | Company admin or product manager | All publication requirements pass and company is verified. |
-| `published` | `draft` | Company admin or product manager | Used when voluntarily withdrawing for editing. |
+| `draft` | `submitted` | Company admin or product manager | All submission requirements pass and company is verified. |
+| `changes_requested` | `submitted` | Company admin or product manager | Requested corrections are complete. |
+| `submitted` | `draft` | Company admin or product manager | Company withdraws its own submission before a review decision. |
+| `changes_requested` | `draft` | Company admin or product manager | Company withdraws returned content. |
+| `submitted` | `published` | Admin or super admin | Official publication requirements pass. |
+| `submitted` | `changes_requested` | Admin or super admin | Review reason is mandatory. |
 | `published` | `hidden` | Admin or super admin | `hidden_reason` is mandatory. |
 | `draft` | `hidden` | Admin or super admin | Used for governance intervention. |
 | `hidden` | `published` | Admin or super admin | Product still satisfies publication requirements. |
-| `hidden` | `draft` | Admin or super admin | Product requires company correction before republication. |
+| `hidden` | `changes_requested` | Admin or super admin | Product requires company correction before resubmission. |
 | `draft` | `archived` | Company admin, product manager, admin, or super admin | Archive metadata is recorded. |
-| `published` | `archived` | Company admin, product manager, admin, or super admin | Archive metadata is recorded. |
+| `submitted` | `archived` | Admin or super admin | Archive metadata is recorded. |
+| `changes_requested` | `archived` | Company admin, product manager, admin, or super admin | Archive metadata is recorded. |
+| `published` | `archived` | Admin or super admin | Archive metadata is recorded. |
 | `hidden` | `archived` | Admin or super admin | Archive metadata is recorded. |
+
+No company role may transition an official catalog product into `published`. Companies may not directly modify a published official catalog record. Published content must return through a controlled correction and resubmission workflow before company edits are accepted.
 
 `archived` is terminal in MVP. Restoration requires an administrator-approved architecture or governance procedure and is not an ordinary client action.
 
@@ -477,7 +502,7 @@ Required constraints:
 
 ## 6.3 Favorite visibility and analytics
 
-- A favorite remains stored if its target becomes hidden, archived, suspended, or unavailable.
+- A favorite remains stored if its target becomes hidden, archived, suspended, `not_marketed`, or `discontinued`.
 - Inactive targets are omitted from the normal favorites list.
 - The user may still remove a favorite whose target is inactive.
 - Companies may receive only aggregated favorite counts.
@@ -653,7 +678,7 @@ A campaign may be delivered only when:
 - Campaign company is verified.
 - Country, city, and specialty targeting match the requesting user.
 - Target content is visible and eligible.
-- Product targets are `published` and available in Iraq.
+- Product targets are official catalog records with `status = published` and `market_status = marketed_in_iraq`.
 - Company targets are verified and public.
 - The campaign has been approved by an administrator or super administrator.
 
@@ -695,7 +720,9 @@ Anonymous access is limited to:
 
 Registered users with pending, rejected, documents-requested, suspended, or archived status do not receive healthcare-professional catalog access.
 
-Only an active healthcare professional with `verification_status = approved` receives the professional discovery experience.
+Only an authenticated active profile with healthcare-professional approval, `profession_type = physician`, and `verification_status = approved` receives the doctor-facing official catalog experience.
+
+Pharmacist access to the official catalog is not enabled in MVP. Enabling it requires explicit product-owner approval and an architecture amendment.
 
 ## 9.2 Platform access matrix
 
@@ -713,8 +740,8 @@ Legend:
 | Registration lookups | R | R | R | R | R | R |
 | Own profile | — | R/U safe fields | R/U safe fields | R/U safe fields | R/U | R/U |
 | Verified public companies | — | — | R | R | R | R |
-| Published products | — | — | R | R | R | R |
-| Own company drafts/hidden/archived products | — | — | — | Role-dependent R | R | R |
+| Official published products | — | — | Physician only | R | R | R |
+| Own company draft/submitted/changes-requested/hidden/archived products | — | — | — | Role-dependent R | R | R |
 | Brochure download | — | — | R | Own-company R | R | R |
 | Product favorites | — | — | C/R/D own | — | R for governance only | R |
 | Company favorites | — | — | C/R/D own | — | R for governance only | R |
@@ -742,8 +769,9 @@ Safe profile fields exclude:
 | Manage social links | Yes | Yes | No | No | No |
 | View all own-company products | Yes | Yes | Yes | Published only | Published only |
 | Create and edit product drafts | Yes | No | Yes | No | No |
-| Publish or withdraw products | Yes | No | Yes | No | No |
-| Archive products | Yes | No | Yes | No | No |
+| Submit or withdraw official catalog records | Yes | No | Yes | No | No |
+| Publish official catalog records | No | No | No | No | No |
+| Archive unpublished company submissions | Yes | No | Yes | No | No |
 | Override administrator-hidden status | No | No | No | No | No |
 | Upload product images and brochures | Yes | No | Yes | No | No |
 | Create and edit campaign drafts | Yes | Yes | No | No | No |
@@ -760,7 +788,8 @@ Representative product assignments are not part of MVP. Representatives receive 
 
 Product read access must enforce all of the following:
 
-- Approved healthcare professionals may read only published products of verified companies available in Iraq.
+- Approved physicians may read only official admin-published products of verified companies with `market_status = marketed_in_iraq`.
+- Pharmacists have no official catalog access in MVP unless explicitly approved later.
 - Company users may read records belonging to their active company according to company role.
 - Admins and super admins may read all product states.
 - Product relationships, media metadata, brochures, translations, and keywords inherit parent-product visibility.
@@ -769,7 +798,9 @@ Product write access must enforce:
 
 - Company ownership through active `company_users` membership.
 - Company role of `company_admin` or `product_manager`.
-- Verified company status for publication.
+- Verified company status for submission.
+- Company writes limited to `draft`, `changes_requested`, and eligible submitted-withdrawal operations.
+- Official review, publication, hiding, restoration, archival, and trusted linking restricted to admin or super admin.
 - Immutable `company_id`.
 - No client modification of moderation actor/timestamp fields.
 - Lifecycle transitions through trusted operations.
@@ -795,7 +826,7 @@ Product write access must enforce:
 - Company admins and marketing managers may manage campaign drafts belonging to their company.
 - Company users cannot set `approved_by`, `approved_at`, or directly set status to `active`.
 - Admins and super admins may approve, activate, pause, complete, or archive campaigns.
-- Approved healthcare professionals receive only eligible campaign results through the sponsored-search query, not unrestricted campaign-table access.
+- Eligible approved physicians receive only eligible campaign results through the sponsored-search query, not unrestricted campaign-table access.
 - Campaign target writes require ownership validation against the campaign company.
 
 ---
@@ -823,13 +854,13 @@ Company profile, product, team, and campaign management are provided to company 
 | Company invitations and membership | Required | Includes invitation, acceptance, role changes, and deactivation. |
 | Company profiles | Required | English public content is required; Arabic content is optional. |
 | Product taxonomy | Required | Admin-managed drug classes, generic drugs, and specialties. |
-| Product management | Required | Draft, publish, withdraw, hide, and archive lifecycle. |
+| Product management | Required | Company draft/submission/withdrawal plus admin review, publication, hiding, restoration, and archival. |
 | Product localization | Required | English content is required before publication; Arabic content is optional in MVP. |
-| Iraq product market | Required | Every published MVP product must be available in Iraq. |
+| Iraq product market | Required | Every official published MVP product must be designated `marketed_in_iraq`; this is not stock or live availability. |
 | Multi-country expansion | Post-MVP | Launch scope is Iraq only; the schema remains expansion-ready. |
 | Product search | Required | Brand, generic, company, drug class, and specialty. |
 | Generic landing pages | Required | Product and company counts include only visible products. |
-| Product and company favorites | Required | Approved healthcare professionals only. |
+| Product and company favorites | Required | Approved physicians only unless pharmacist catalog access is explicitly approved later. |
 | Brochure downloads | Required | Authorized signed downloads and download analytics. |
 | Reporting | Required | Product and company reporting with admin resolution. |
 | Sponsored search | Required | Maximum three labeled featured products or companies. |
@@ -864,11 +895,13 @@ Subscription management, event management, and platform analytics dashboards are
 
 ## 10.4 MVP discovery access
 
-- Product and company discovery requires authentication and approved healthcare-professional status.
-- Company users may view published catalog content and their authorized company workspace.
+- Official product discovery requires an authenticated active approved physician profile.
+- Company-name search may expose verified company pages and clearly labeled company-provided content.
+- Company users may view official published catalog content and their authorized company workspace.
 - There is no anonymous catalog.
-- Sponsored content is shown only to approved healthcare professionals.
-- Search and generic landing-page counts exclude draft, hidden, archived, unavailable, and suspended-company products.
+- Sponsored content is shown only to eligible approved physicians.
+- Official trade-name and generic-name search and generic landing-page counts include only admin-published records that are `marketed_in_iraq` and owned by verified companies.
+- If company-provided listings become searchable later, they must appear separately from official catalog results and must not affect official ranking or counts.
 
 ---
 
@@ -905,10 +938,12 @@ The following decisions are final:
 - Iraq is the only active product market required for MVP.
 - Launch scope is Iraq only; multi-country expansion is future.
 - English product content is mandatory before publication; Arabic content is optional in MVP.
-- Product states are `draft`, `published`, `hidden`, and `archived`.
-- There is no product approval state and no per-product administrator approval.
+- Official product states are `draft`, `submitted`, `changes_requested`, `published`, `hidden`, and `archived`.
+- Official catalog publication is controlled exclusively by active admins and super admins after product review.
+- Verified companies may separately publish clearly labeled company-provided content inside their own company pages.
+- Company-page publication does not create or publish an official catalog product and does not confer platform approval.
 - Administrators may moderate products without editing company-authored clinical content.
-- Product and company favorites belong only to approved healthcare professionals.
+- Product and company favorites belong only to approved physicians unless pharmacist catalog access is explicitly approved later.
 - Companies never receive raw favorite records.
 - Company users join through a secure invitation or initial-admin verification workflow.
 - Clients cannot assign platform roles, company ownership, or company roles directly.
@@ -919,6 +954,189 @@ The following decisions are final:
 - Company management is delivered through the Flutter mobile app in MVP.
 - Events, subscriptions, company analytics dashboards, notifications, and the dedicated company portal are post-MVP.
 - This document overrides conflicting product, permission, workflow, and MVP statements in earlier documentation.
+
+---
+
+# 13. Phase 3 Architecture Amendment — Publication-Level Separation
+
+This amendment supersedes every earlier statement that allows a verified company to directly publish an official doctor-facing catalog product.
+
+PharmaConnect defines two distinct publication levels:
+
+1. Company-page publication.
+2. Official doctor-facing catalog publication.
+
+Neither publication level represents or implies stock, supply, pricing, ordering, or commercial availability.
+
+## 13.1 Company-Page Publication
+
+A verified company may publish company-provided information within its own company page. This may include:
+
+- Company profile information.
+- Company descriptions and contact information.
+- Company-owned product listings.
+- Company-provided product descriptions and materials.
+
+Requirements:
+
+- Content is clearly labeled as company-provided.
+- Company users may manage content only for their own verified company through active company membership and authorized company roles.
+- Administrators may hide or archive company-page content for governance or safety reasons.
+- Publication and moderation create immutable audit records.
+- Company-page publication does not create an official catalog product.
+- Company-page publication does not confer platform approval.
+- Company-page publication does not make a product eligible for official trade-name or generic-name catalog results.
+- Company-page publication must not imply pharmacy stock, distributor availability, sales-office availability, pricing, ordering, delivery, or supply-chain status.
+
+Company-page listings use a lifecycle separate from the official catalog lifecycle.
+
+## 13.2 Official Doctor-Facing Catalog Publication
+
+Official catalog records are the authoritative product records displayed in:
+
+- Doctor-facing trade or brand-name search.
+- Doctor-facing generic or scientific-name search.
+- Official product-detail pages.
+- Official generic-drug result groupings.
+
+Companies may:
+
+- Create official catalog submissions for their own company.
+- Edit drafts and records returned for correction.
+- Submit records for administrative review.
+- Withdraw their own draft or submitted records through trusted operations.
+
+Companies may not:
+
+- Set an official catalog record to `published`.
+- Represent submitted content as platform-approved.
+- Modify an official published record directly.
+- Control official review, publication, moderation, or trusted-linking metadata.
+
+Only an active admin or super admin may approve and publish an official catalog product. In the official catalog, `published` means reviewed, platform-approved, and explicitly published by an admin or super admin for doctor-facing discovery.
+
+## 13.3 Separate Data Authority
+
+Company-page product listings and official catalog products must not share one lifecycle status.
+
+The separate model is:
+
+```text
+companies
+    → company_product_listings
+        → company_listing_translations
+
+official catalog
+    → products
+        → product_translations
+        → product_markets
+            → product_market_translations
+```
+
+A company listing may reference an official product after approval through nullable `official_product_id`.
+
+Required rules:
+
+- The reference is established through trusted logic.
+- The reference does not allow the company listing or its owner to mutate the official product.
+- Creating a company listing does not automatically create or publish an official product.
+- Removing or moderating a company listing does not alter the lifecycle of a referenced official product.
+
+## 13.4 Official Catalog Lifecycle
+
+Official catalog states are:
+
+- `draft`
+- `submitted`
+- `changes_requested`
+- `published`
+- `hidden`
+- `archived`
+
+No company role may transition an official product into `published`.
+
+Company admins and product managers may manage only their company’s drafts, records returned for correction, submissions, and eligible withdrawal operations. Admins and super admins control review, publication, hiding, restoration, archival, and trusted linking.
+
+## 13.5 Search Separation
+
+Company-name search may return:
+
+- Verified company pages.
+- Clearly labeled company-provided content within those pages.
+
+Official trade-name and generic-name catalog search returns only official admin-published catalog records.
+
+If company-provided product listings become independently searchable later:
+
+- They appear in a separate result section.
+- They are clearly labeled as company-provided.
+- They are not mixed into official catalog relevance ranking.
+- They do not inherit platform-approval indicators.
+- They do not affect official generic-product or company counts.
+
+## 13.6 Authorization Requirements
+
+Company-page content requires:
+
+- A verified owning company.
+- Active company membership.
+- Matching company ownership.
+- An authorized company role.
+
+Official catalog submissions require:
+
+- A verified owning company.
+- Active membership as `company_admin` or `product_manager`.
+- A product state of `draft` or `changes_requested`, except for trusted submitted-content withdrawal.
+
+Admin or super admin exclusively controls:
+
+- Official review decisions.
+- Official publication.
+- Hiding and restoration.
+- Archival of published records.
+- Trusted linking between company listings and official products.
+
+## 13.7 Doctor Access
+
+Doctor-facing official catalog access requires all of the following:
+
+- An authenticated profile.
+- Active profile status.
+- Approved healthcare-professional verification.
+- `profession_type = physician`.
+- Official product status `published`.
+- Verified owning company.
+- Iraq market designation `marketed_in_iraq`.
+
+Pharmacist official catalog access is not enabled in MVP. It requires explicit product-owner approval before implementation.
+
+## 13.8 Market-Presence Terminology
+
+The only product market-presence values are:
+
+- `marketed_in_iraq`
+- `not_marketed`
+- `discontinued`
+
+These values describe catalog-level Iraq market presence only. They do not represent real-time commercial availability.
+
+## 13.9 Strict Exclusions
+
+Neither publication level may introduce or imply:
+
+- Distributors.
+- Pharmacies.
+- Warehouses.
+- Stock quantities.
+- Live availability.
+- Office-level availability.
+- Ordering.
+- Pricing.
+- Invoices.
+- Sales representatives.
+- Supplier tracking.
+- Supply-chain tracking.
 
 ---
 
