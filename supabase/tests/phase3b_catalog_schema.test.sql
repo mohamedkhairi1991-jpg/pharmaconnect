@@ -48,8 +48,15 @@ select is(
     join pg_type on pg_type.oid = pg_enum.enumtypid
     where pg_type.typname = 'product_status'
   ),
-  array['draft']::text[],
-  'Phase 3B product status is draft only'
+  array[
+    'draft',
+    'submitted',
+    'changes_requested',
+    'published',
+    'hidden',
+    'archived'
+  ]::text[],
+  'product status includes the Phase 3B draft and Phase 3C lifecycle states'
 );
 
 select is(
