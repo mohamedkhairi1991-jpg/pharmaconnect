@@ -1,3 +1,9 @@
+export 'src/application/catalog_access_providers.dart';
+export 'src/application/catalog_access_state.dart';
+export 'src/application/catalog_mutation_controllers.dart';
+export 'src/application/catalog_provider_guards.dart';
+export 'src/application/catalog_read_providers.dart';
+export 'src/application/catalog_repository_providers.dart';
 export 'src/data/dto/access_dtos.dart';
 export 'src/data/dto/product_dtos.dart';
 export 'src/data/dto/taxonomy_dtos.dart';

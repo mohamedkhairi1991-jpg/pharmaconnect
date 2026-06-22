@@ -12,6 +12,7 @@ resolution: workspace
 dependencies:
   flutter:
     sdk: flutter
+  flutter_riverpod: ^3.0.0
   pharmaconnect_backend:
     path: ../pharmaconnect_backend
   pharmaconnect_identity:
