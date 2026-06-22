@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pharmaconnect_backend/pharmaconnect_backend.dart';
+import 'package:pharmaconnect_catalog/pharmaconnect_catalog.dart';
 import 'package:pharmaconnect_identity/pharmaconnect_identity.dart';
 import 'package:pharmaconnect_mobile/features/authentication/presentation/check_email_page.dart';
 import 'package:pharmaconnect_mobile/features/authentication/presentation/forgot_password_page.dart';
@@ -8,6 +9,7 @@ import 'package:pharmaconnect_mobile/features/authentication/presentation/reset_
 import 'package:pharmaconnect_mobile/features/authentication/presentation/session_pages.dart';
 import 'package:pharmaconnect_mobile/features/authentication/presentation/sign_in_page.dart';
 import 'package:pharmaconnect_mobile/features/authentication/presentation/sign_up_page.dart';
+import 'package:pharmaconnect_mobile/features/catalog/presentation/catalog_entry_pages.dart';
 
 const String mobileSignInPath = '/auth/sign-in';
 const String mobileSignUpPath = '/auth/sign-up';
@@ -19,6 +21,10 @@ const String mobileSessionLoadingPath = '/session/loading';
 const String mobileSessionStatusPath = '/session/status';
 const String mobileAccountUnavailablePath = '/session/unavailable';
 const String mobileAuthenticatedPath = '/session';
+const String mobileOfficialCatalogPath = '/catalog';
+const String mobileCompanyCatalogPath = '/company/catalog';
+
+const String _catalogTargetQueryParameter = 'catalogTarget';
 
 final Provider<GoRouter> mobileRouterProvider = Provider<GoRouter>((Ref ref) {
   late final GoRouter router;
@@ -28,6 +34,9 @@ final Provider<GoRouter> mobileRouterProvider = Provider<GoRouter>((Ref ref) {
       location: state.matchedLocation,
       authState: ref.read(authStateProvider),
       principal: ref.read(sessionPrincipalProvider),
+      catalogAccess: ref.read(catalogAccessStateProvider),
+      pendingCatalogLocation:
+          state.uri.queryParameters[_catalogTargetQueryParameter],
     ),
     routes: <RouteBase>[
       GoRoute(
@@ -71,12 +80,21 @@ final Provider<GoRouter> mobileRouterProvider = Provider<GoRouter>((Ref ref) {
         path: mobileAuthenticatedPath,
         builder: (context, state) => const MobileAuthenticatedShellPage(),
       ),
+      GoRoute(
+        path: mobileOfficialCatalogPath,
+        builder: (context, state) => const MobileOfficialCatalogEntryPage(),
+      ),
+      GoRoute(
+        path: mobileCompanyCatalogPath,
+        builder: (context, state) => const MobileCompanyCatalogEntryPage(),
+      ),
     ],
   );
 
   ref
     ..listen(authStateProvider, (previous, next) => router.refresh())
     ..listen(sessionPrincipalProvider, (previous, next) => router.refresh())
+    ..listen(catalogAccessStateProvider, (previous, next) => router.refresh())
     ..onDispose(router.dispose);
 
   return router;
@@ -86,6 +104,8 @@ String? mobileAuthRedirect({
   required String location,
   required AsyncValue<AuthSessionState> authState,
   required AsyncValue<SessionPrincipal?> principal,
+  AsyncValue<CatalogAccessState>? catalogAccess,
+  String? pendingCatalogLocation,
 }) {
   const Set<String> publicPaths = <String>{
     mobileSignInPath,
@@ -123,7 +143,8 @@ String? mobileAuthRedirect({
         : mobileAccountUnavailablePath;
   }
 
-  final String destination = switch (principal.requireValue!.kind) {
+  final SessionPrincipalKind principalKind = principal.requireValue!.kind;
+  final String destination = switch (principalKind) {
     SessionPrincipalKind.pending => mobileSessionStatusPath,
     SessionPrincipalKind.suspended ||
     SessionPrincipalKind.archived ||
@@ -133,5 +154,62 @@ String? mobileAuthRedirect({
     SessionPrincipalKind.administrator => mobileAccountUnavailablePath,
   };
 
-  return location == destination ? null : destination;
+  if (destination != mobileAuthenticatedPath) {
+    return location == destination ? null : destination;
+  }
+
+  final String? catalogTarget = _catalogTargetForLocation(
+    location,
+    pendingCatalogLocation,
+  );
+  if (catalogTarget != null) {
+    final AsyncValue<CatalogAccessState> access =
+        catalogAccess ?? const AsyncLoading<CatalogAccessState>();
+    if (access.isLoading) {
+      if (location == mobileSessionLoadingPath) {
+        return null;
+      }
+      return Uri(
+        path: mobileSessionLoadingPath,
+        queryParameters: <String, String>{
+          _catalogTargetQueryParameter: catalogTarget,
+        },
+      ).toString();
+    }
+    if (access.hasError) {
+      return location == mobileAccountUnavailablePath
+          ? null
+          : mobileAccountUnavailablePath;
+    }
+
+    final bool allowed = switch (catalogTarget) {
+      mobileOfficialCatalogPath => access.requireValue.canReadOfficialCatalog,
+      mobileCompanyCatalogPath => access.requireValue.canReadCompanyWorkflow,
+      _ => false,
+    };
+    if (!allowed) {
+      return location == mobileAccountUnavailablePath
+          ? null
+          : mobileAccountUnavailablePath;
+    }
+    return location == catalogTarget ? null : catalogTarget;
+  }
+
+  return location == mobileAuthenticatedPath ? null : mobileAuthenticatedPath;
+}
+
+String? _catalogTargetForLocation(
+  String location,
+  String? pendingCatalogLocation,
+) {
+  if (location == mobileOfficialCatalogPath ||
+      location == mobileCompanyCatalogPath) {
+    return location;
+  }
+  if (location == mobileSessionLoadingPath &&
+      (pendingCatalogLocation == mobileOfficialCatalogPath ||
+          pendingCatalogLocation == mobileCompanyCatalogPath)) {
+    return pendingCatalogLocation;
+  }
+  return null;
 }
