@@ -197,4 +197,77 @@ void main() {
       mobileOfficialCatalogPath,
     );
   });
+
+  test('official catalog access is not retained after principal change', () {
+    expect(
+      mobileAuthRedirect(
+        location: mobileOfficialCatalogPath,
+        authState: authenticated,
+        principal: const AsyncData(
+          SessionPrincipal(
+            kind: SessionPrincipalKind.companyUser,
+            profile: null,
+          ),
+        ),
+        catalogAccess: const AsyncData(
+          CatalogAccessState(CatalogAudience.officialCatalog),
+        ),
+      ),
+      mobileAccountUnavailablePath,
+    );
+  });
+
+  test('company catalog access is not retained after principal change', () {
+    expect(
+      mobileAuthRedirect(
+        location: mobileCompanyCatalogPath,
+        authState: authenticated,
+        principal: const AsyncData(
+          SessionPrincipal(
+            kind: SessionPrincipalKind.healthcareProfessional,
+            profile: null,
+          ),
+        ),
+        catalogAccess: const AsyncData(
+          CatalogAccessState(CatalogAudience.companyWorkflow),
+        ),
+      ),
+      mobileAccountUnavailablePath,
+    );
+  });
+
+  test('guarded routes do not loop while auth or principal loads', () {
+    expect(
+      mobileAuthRedirect(
+        location: mobileOfficialCatalogPath,
+        authState: const AsyncLoading<AuthSessionState>(),
+        principal: const AsyncLoading<SessionPrincipal?>(),
+      ),
+      mobileSessionLoadingPath,
+    );
+    expect(
+      mobileAuthRedirect(
+        location: mobileSessionLoadingPath,
+        authState: const AsyncLoading<AuthSessionState>(),
+        principal: const AsyncLoading<SessionPrincipal?>(),
+      ),
+      isNull,
+    );
+    expect(
+      mobileAuthRedirect(
+        location: mobileCompanyCatalogPath,
+        authState: authenticated,
+        principal: const AsyncLoading<SessionPrincipal?>(),
+      ),
+      mobileSessionLoadingPath,
+    );
+    expect(
+      mobileAuthRedirect(
+        location: mobileSessionLoadingPath,
+        authState: authenticated,
+        principal: const AsyncLoading<SessionPrincipal?>(),
+      ),
+      isNull,
+    );
+  });
 }

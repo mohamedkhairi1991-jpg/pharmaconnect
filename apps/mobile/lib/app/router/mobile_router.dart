@@ -183,8 +183,12 @@ String? mobileAuthRedirect({
     }
 
     final bool allowed = switch (catalogTarget) {
-      mobileOfficialCatalogPath => access.requireValue.canReadOfficialCatalog,
-      mobileCompanyCatalogPath => access.requireValue.canReadCompanyWorkflow,
+      mobileOfficialCatalogPath =>
+        principalKind == SessionPrincipalKind.healthcareProfessional &&
+            access.requireValue.canReadOfficialCatalog,
+      mobileCompanyCatalogPath =>
+        principalKind == SessionPrincipalKind.companyUser &&
+            access.requireValue.canReadCompanyWorkflow,
       _ => false,
     };
     if (!allowed) {

@@ -192,4 +192,39 @@ void main() {
       adminUnauthorizedPath,
     );
   });
+
+  test('catalog review does not loop while auth or principal loads', () {
+    expect(
+      adminAuthRedirect(
+        location: adminCatalogReviewPath,
+        authState: const AsyncLoading<AuthSessionState>(),
+        principal: const AsyncLoading<SessionPrincipal?>(),
+      ),
+      adminSessionLoadingPath,
+    );
+    expect(
+      adminAuthRedirect(
+        location: adminSessionLoadingPath,
+        authState: const AsyncLoading<AuthSessionState>(),
+        principal: const AsyncLoading<SessionPrincipal?>(),
+      ),
+      isNull,
+    );
+    expect(
+      adminAuthRedirect(
+        location: adminCatalogReviewPath,
+        authState: authenticated,
+        principal: const AsyncLoading<SessionPrincipal?>(),
+      ),
+      adminSessionLoadingPath,
+    );
+    expect(
+      adminAuthRedirect(
+        location: adminSessionLoadingPath,
+        authState: authenticated,
+        principal: const AsyncLoading<SessionPrincipal?>(),
+      ),
+      isNull,
+    );
+  });
 }
