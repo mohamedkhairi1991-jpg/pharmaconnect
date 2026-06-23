@@ -63,19 +63,99 @@ void main() {
     expect(find.text('AeroCure'), findsOneWidget);
     expect(find.text('Salbutamol'), findsOneWidget);
     expect(find.text('PharmaConnect Labs'), findsOneWidget);
-    expect(find.text('100 mcg • inhaler'), findsOneWidget);
+    expect(find.text('100 mcg / inhaler'), findsOneWidget);
   });
 
-  testWidgets('product cards avoid supply-chain and commerce wording', (
+  testWidgets('data state renders multiple product cards', (
     WidgetTester tester,
   ) async {
     await _pumpCatalogHome(
       tester,
       repository: _FakeOfficialCatalogRepository(
-        products: <ProductSummary>[_productSummary()],
+        products: <ProductSummary>[_productSummary(), _cardioProductSummary()],
       ),
     );
     await tester.pumpAndSettle();
+
+    expect(find.text('AeroCure'), findsOneWidget);
+    expect(find.text('CardioZen'), findsOneWidget);
+  });
+
+  testWidgets('local search filters by brand name', (
+    WidgetTester tester,
+  ) async {
+    await _pumpCatalogHomeWithSearchProducts(tester);
+
+    await tester.enterText(find.byType(TextField), 'cardiozen');
+    await tester.pumpAndSettle();
+
+    expect(find.text('CardioZen'), findsOneWidget);
+    expect(find.text('AeroCure'), findsNothing);
+    expect(find.text('GlucoTrack'), findsNothing);
+  });
+
+  testWidgets('local search filters by generic name', (
+    WidgetTester tester,
+  ) async {
+    await _pumpCatalogHomeWithSearchProducts(tester);
+
+    await tester.enterText(find.byType(TextField), 'metformin');
+    await tester.pumpAndSettle();
+
+    expect(find.text('GlucoTrack'), findsOneWidget);
+    expect(find.text('AeroCure'), findsNothing);
+    expect(find.text('CardioZen'), findsNothing);
+  });
+
+  testWidgets('local search filters by company name', (
+    WidgetTester tester,
+  ) async {
+    await _pumpCatalogHomeWithSearchProducts(tester);
+
+    await tester.enterText(find.byType(TextField), 'heart labs');
+    await tester.pumpAndSettle();
+
+    expect(find.text('CardioZen'), findsOneWidget);
+    expect(find.text('AeroCure'), findsNothing);
+    expect(find.text('GlucoTrack'), findsNothing);
+  });
+
+  testWidgets('no-match search shows safe empty state', (
+    WidgetTester tester,
+  ) async {
+    await _pumpCatalogHomeWithSearchProducts(tester);
+
+    await tester.enterText(find.byType(TextField), 'not-a-product');
+    await tester.pumpAndSettle();
+
+    expect(find.text('No catalog matches found'), findsOneWidget);
+    expect(find.text('AeroCure'), findsNothing);
+    expect(find.text('CardioZen'), findsNothing);
+    expect(find.text('GlucoTrack'), findsNothing);
+  });
+
+  testWidgets('clearing local search restores product cards', (
+    WidgetTester tester,
+  ) async {
+    await _pumpCatalogHomeWithSearchProducts(tester);
+
+    await tester.enterText(find.byType(TextField), 'metformin');
+    await tester.pumpAndSettle();
+    expect(find.text('GlucoTrack'), findsOneWidget);
+    expect(find.text('AeroCure'), findsNothing);
+
+    await tester.tap(find.byTooltip('Clear catalog search'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('AeroCure'), findsOneWidget);
+    expect(find.text('CardioZen'), findsOneWidget);
+    expect(find.text('GlucoTrack'), findsOneWidget);
+  });
+
+  testWidgets('product cards avoid supply-chain and commerce wording', (
+    WidgetTester tester,
+  ) async {
+    await _pumpCatalogHomeWithSearchProducts(tester);
 
     final RegExp prohibitedWords = RegExp(
       r'\b(stock|price|order|orders|seller|pharmacy|pharmacies|availability|available)\b',
@@ -113,11 +193,32 @@ Future<void> _pumpCatalogHome(
   await tester.pump();
 }
 
-ProductSummary _productSummary() {
+Future<void> _pumpCatalogHomeWithSearchProducts(WidgetTester tester) async {
+  await _pumpCatalogHome(
+    tester,
+    repository: _FakeOfficialCatalogRepository(
+      products: <ProductSummary>[
+        _productSummary(),
+        _cardioProductSummary(),
+        _diabetesProductSummary(),
+      ],
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
+ProductSummary _productSummary({
+  String id = 'product-id',
+  String brandName = 'AeroCure',
+  String genericName = 'Salbutamol',
+  String companyName = 'PharmaConnect Labs',
+  String strength = '100 mcg',
+  String dosageForm = 'inhaler',
+}) {
   final DateTime timestamp = DateTime.utc(2026, 6, 1);
   final DrugClass drugClass = DrugClass(
-    id: 'respiratory',
-    code: 'respiratory',
+    id: '$id-class',
+    code: '$id-class',
     isActive: true,
     translations: LocalizedContent<TaxonomyTranslation>(
       english: TaxonomyTranslation(
@@ -128,23 +229,23 @@ ProductSummary _productSummary() {
   );
 
   return ProductSummary(
-    id: 'product-id',
-    company: const CatalogCompanySummary(
-      id: 'company-id',
-      companyName: 'PharmaConnect Labs',
-      legalName: 'PharmaConnect Labs LLC',
+    id: id,
+    company: CatalogCompanySummary(
+      id: '$id-company',
+      companyName: companyName,
+      legalName: '$companyName LLC',
       countryId: 'iq',
       status: CompanyStatus.verified,
     ),
     genericDrug: GenericDrug(
-      id: 'generic-id',
-      code: 'salbutamol',
+      id: '$id-generic',
+      code: genericName.toLowerCase(),
       drugClass: drugClass,
       isActive: true,
       translations: LocalizedContent<TaxonomyTranslation>(
         english: TaxonomyTranslation(
           locale: ContentLocale.english,
-          name: 'Salbutamol',
+          name: genericName,
         ),
       ),
       composition: const <GenericCompositionEntry>[],
@@ -154,20 +255,20 @@ ProductSummary _productSummary() {
     status: ProductLifecycleStatus.published,
     translations: LocalizedContent<ProductTranslation>(
       english: ProductTranslation(
-        id: 'translation-id',
+        id: '$id-translation',
         locale: ContentLocale.english,
-        brandName: 'AeroCure',
+        brandName: brandName,
         createdAt: timestamp,
         updatedAt: timestamp,
       ),
     ),
     iraqMarket: ProductMarket(
-      id: 'market-id',
+      id: '$id-market',
       countryId: 'iq',
-      strength: '100 mcg',
-      dosageForm: 'inhaler',
+      strength: strength,
+      dosageForm: dosageForm,
       route: 'inhalation',
-      packSize: '1 inhaler',
+      packSize: '1 unit',
       marketStatus: IraqMarketStatus.marketedInIraq,
       registrationStatus: ProductRegistrationStatus.registered,
       translations: const LocalizedContent<ProductMarketTranslation>(
@@ -179,6 +280,24 @@ ProductSummary _productSummary() {
     updatedAt: timestamp,
   );
 }
+
+ProductSummary _cardioProductSummary() => _productSummary(
+  id: 'cardio-product-id',
+  brandName: 'CardioZen',
+  genericName: 'Atorvastatin',
+  companyName: 'Heart Labs',
+  strength: '20 mg',
+  dosageForm: 'tablet',
+);
+
+ProductSummary _diabetesProductSummary() => _productSummary(
+  id: 'diabetes-product-id',
+  brandName: 'GlucoTrack',
+  genericName: 'Metformin',
+  companyName: 'Metabolic Care',
+  strength: '500 mg',
+  dosageForm: 'tablet',
+);
 
 final class _FakeOfficialCatalogRepository
     implements OfficialCatalogRepository {

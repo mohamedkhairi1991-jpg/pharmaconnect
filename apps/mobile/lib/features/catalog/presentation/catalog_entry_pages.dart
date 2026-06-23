@@ -25,7 +25,7 @@ class MobileCompanyCatalogEntryPage extends StatelessWidget {
   }
 }
 
-class _OfficialCatalogHome extends ConsumerWidget {
+class _OfficialCatalogHome extends ConsumerStatefulWidget {
   const _OfficialCatalogHome();
 
   static const Color _background = Color(0xFF0B111B);
@@ -34,13 +34,69 @@ class _OfficialCatalogHome extends ConsumerWidget {
   static const Color _mutedText = Color(0xFF93A3B8);
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_OfficialCatalogHome> createState() =>
+      _OfficialCatalogHomeState();
+}
+
+class _OfficialCatalogHomeState extends ConsumerState<_OfficialCatalogHome> {
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  String _selectedChip = 'For you';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _handleSearchChanged(String value) {
+    setState(() {
+      _searchQuery = value;
+    });
+  }
+
+  void _clearSearch() {
+    _searchController.clear();
+    setState(() {
+      _searchQuery = '';
+    });
+  }
+
+  void _selectChip(String label) {
+    setState(() {
+      _selectedChip = label;
+    });
+  }
+
+  List<ProductSummary> _filterProducts(List<ProductSummary> products) {
+    final String query = _searchQuery.trim().toLowerCase();
+    final String chipQuery = _selectedChip == 'For you'
+        ? ''
+        : _selectedChip.toLowerCase();
+
+    if (query.isEmpty && chipQuery.isEmpty) {
+      return products;
+    }
+
+    return products
+        .where((ProductSummary product) {
+          final String searchableText = _ProductDisplayData.fromProduct(
+            product,
+          ).searchableText;
+          return (query.isEmpty || searchableText.contains(query)) &&
+              (chipQuery.isEmpty || searchableText.contains(chipQuery));
+        })
+        .toList(growable: false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final AsyncValue<List<ProductSummary>> products = ref.watch(
       officialProductListProvider(_officialCatalogHomeRequest),
     );
 
     return Scaffold(
-      backgroundColor: _background,
+      backgroundColor: _OfficialCatalogHome._background,
       body: SafeArea(
         child: LayoutBuilder(
           builder: (BuildContext context, BoxConstraints constraints) {
@@ -62,7 +118,11 @@ class _OfficialCatalogHome extends ConsumerWidget {
                     children: <Widget>[
                       const _CatalogHeader(),
                       const SizedBox(height: PharmaConnectSpacing.large),
-                      const _CatalogSearchBar(),
+                      _CatalogSearchBar(
+                        controller: _searchController,
+                        onChanged: _handleSearchChanged,
+                        onClear: _searchQuery.isEmpty ? null : _clearSearch,
+                      ),
                       const SizedBox(height: PharmaConnectSpacing.large),
                       const _SectionHeading(
                         title: 'Explore catalog',
@@ -71,7 +131,10 @@ class _OfficialCatalogHome extends ConsumerWidget {
                       const SizedBox(height: 14),
                       const _QuickActionStrip(),
                       const SizedBox(height: 28),
-                      const _CategoryChips(),
+                      _CategoryChips(
+                        selectedLabel: _selectedChip,
+                        onSelected: _selectChip,
+                      ),
                       const SizedBox(height: 28),
                       const _SectionHeading(
                         title: 'Official products',
@@ -80,6 +143,12 @@ class _OfficialCatalogHome extends ConsumerWidget {
                       const SizedBox(height: 14),
                       _OfficialProductSection(
                         products: products,
+                        filteredProducts: products.maybeWhen(
+                          data: _filterProducts,
+                          orElse: () => const <ProductSummary>[],
+                        ),
+                        searchQuery: _searchQuery,
+                        selectedChip: _selectedChip,
                         onRetry: () => ref.invalidate(
                           officialProductListProvider(
                             _officialCatalogHomeRequest,
@@ -192,13 +261,21 @@ class _HeaderActionButton extends StatelessWidget {
 }
 
 class _CatalogSearchBar extends StatelessWidget {
-  const _CatalogSearchBar();
+  const _CatalogSearchBar({
+    required this.controller,
+    required this.onChanged,
+    required this.onClear,
+  });
+
+  final TextEditingController controller;
+  final ValueChanged<String> onChanged;
+  final VoidCallback? onClear;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       height: 58,
-      padding: const EdgeInsets.symmetric(horizontal: 18),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
         color: _OfficialCatalogHome._surface,
         borderRadius: BorderRadius.circular(20),
@@ -211,23 +288,43 @@ class _CatalogSearchBar extends StatelessWidget {
           ),
         ],
       ),
-      child: const Row(
+      child: Row(
         children: <Widget>[
-          Icon(Icons.search_rounded, color: Color(0xFF7F91A8), size: 25),
-          SizedBox(width: 12),
+          const Icon(Icons.search_rounded, color: Color(0xFF7F91A8), size: 25),
+          const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              'Search drugs, generics, companies...',
+            child: TextField(
+              controller: controller,
+              onChanged: onChanged,
+              cursorColor: const Color(0xFF2BC7B5),
               maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: _OfficialCatalogHome._mutedText,
-                fontSize: 14,
+              textInputAction: TextInputAction.search,
+              style: const TextStyle(color: Colors.white, fontSize: 14),
+              decoration: const InputDecoration(
+                isDense: true,
+                border: InputBorder.none,
+                hintText: 'Search drugs, generics, companies...',
+                hintStyle: TextStyle(
+                  color: _OfficialCatalogHome._mutedText,
+                  fontSize: 14,
+                ),
               ),
             ),
           ),
-          SizedBox(width: 8),
-          Icon(Icons.tune_rounded, color: Color(0xFF2BC7B5), size: 22),
+          const SizedBox(width: 8),
+          if (onClear != null)
+            IconButton(
+              tooltip: 'Clear catalog search',
+              visualDensity: VisualDensity.compact,
+              onPressed: onClear,
+              icon: const Icon(
+                Icons.close_rounded,
+                color: Color(0xFF93A3B8),
+                size: 20,
+              ),
+            )
+          else
+            const Icon(Icons.tune_rounded, color: Color(0xFF2BC7B5), size: 22),
         ],
       ),
     );
@@ -369,7 +466,10 @@ class _QuickActionCard extends StatelessWidget {
 }
 
 class _CategoryChips extends StatelessWidget {
-  const _CategoryChips();
+  const _CategoryChips({required this.selectedLabel, required this.onSelected});
+
+  final String selectedLabel;
+  final ValueChanged<String> onSelected;
 
   static const List<String> _labels = <String>[
     'For you',
@@ -389,29 +489,34 @@ class _CategoryChips extends StatelessWidget {
         separatorBuilder: (BuildContext context, int index) =>
             const SizedBox(width: 9),
         itemBuilder: (BuildContext context, int index) {
-          final bool selected = index == 0;
-          return Container(
-            padding: const EdgeInsets.symmetric(horizontal: 17),
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: selected
-                  ? PharmaConnectColors.primary
-                  : _OfficialCatalogHome._surface,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
+          final String label = _labels[index];
+          final bool selected = label == selectedLabel;
+          return InkWell(
+            borderRadius: BorderRadius.circular(20),
+            onTap: () => onSelected(label),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 17),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
                 color: selected
-                    ? const Color(0xFF21C9B8)
-                    : Colors.white.withValues(alpha: 0.06),
+                    ? PharmaConnectColors.primary
+                    : _OfficialCatalogHome._surface,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: selected
+                      ? const Color(0xFF21C9B8)
+                      : Colors.white.withValues(alpha: 0.06),
+                ),
               ),
-            ),
-            child: Text(
-              _labels[index],
-              style: TextStyle(
-                color: selected
-                    ? Colors.white
-                    : _OfficialCatalogHome._mutedText,
-                fontSize: 13,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: selected
+                      ? Colors.white
+                      : _OfficialCatalogHome._mutedText,
+                  fontSize: 13,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                ),
               ),
             ),
           );
@@ -424,10 +529,16 @@ class _CategoryChips extends StatelessWidget {
 class _OfficialProductSection extends StatelessWidget {
   const _OfficialProductSection({
     required this.products,
+    required this.filteredProducts,
+    required this.searchQuery,
+    required this.selectedChip,
     required this.onRetry,
   });
 
   final AsyncValue<List<ProductSummary>> products;
+  final List<ProductSummary> filteredProducts;
+  final String searchQuery;
+  final String selectedChip;
   final VoidCallback onRetry;
 
   @override
@@ -462,17 +573,42 @@ class _OfficialProductSection extends StatelessWidget {
       );
     }
 
+    if (filteredProducts.isEmpty) {
+      return _CatalogStateCard(
+        icon: Icons.search_off_rounded,
+        accent: const Color(0xFF35C9B7),
+        title: 'No catalog matches found',
+        subtitle: _noMatchMessage,
+      );
+    }
+
     return Column(
       children: <Widget>[
-        for (int index = 0; index < productList.length && index < 6; index++)
+        for (
+          int index = 0;
+          index < filteredProducts.length && index < 12;
+          index++
+        )
           Padding(
             padding: EdgeInsets.only(top: index == 0 ? 0 : 14),
             child: index == 0
-                ? _FeaturedProductCard(product: productList[index])
-                : _ProductUpdateCard(product: productList[index]),
+                ? _FeaturedProductCard(product: filteredProducts[index])
+                : _ProductUpdateCard(product: filteredProducts[index]),
           ),
       ],
     );
+  }
+
+  String get _noMatchMessage {
+    final String query = searchQuery.trim();
+    final bool hasChip = selectedChip != 'For you';
+    if (query.isNotEmpty && hasChip) {
+      return 'No loaded products match "$query" in $selectedChip.';
+    }
+    if (query.isNotEmpty) {
+      return 'No loaded products match "$query".';
+    }
+    return 'No loaded products match $selectedChip.';
   }
 }
 
@@ -681,7 +817,7 @@ class _ProductUpdateCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 7),
                 Text(
-                  '${data.companyName} • ${data.presentation}',
+                  '${data.companyName} / ${data.presentation}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -781,12 +917,14 @@ final class _ProductDisplayData {
     required this.genericName,
     required this.companyName,
     required this.presentation,
+    required this.searchableText,
   });
 
   final String brandName;
   final String genericName;
   final String companyName;
   final String presentation;
+  final String searchableText;
 
   static _ProductDisplayData fromProduct(ProductSummary product) {
     final String brandName = _fallback(
@@ -808,13 +946,21 @@ final class _ProductDisplayData {
     ];
     final String presentation = presentationParts.isEmpty
         ? 'Presentation not recorded'
-        : presentationParts.join(' • ');
+        : presentationParts.join(' / ');
+    final String searchableText = <String>[
+      brandName,
+      genericName,
+      companyName,
+      if (_hasText(market?.dosageForm)) market!.dosageForm,
+      if (_hasText(market?.strength)) market!.strength,
+    ].join(' ').toLowerCase();
 
     return _ProductDisplayData(
       brandName: brandName,
       genericName: genericName,
       companyName: companyName,
       presentation: presentation,
+      searchableText: searchableText,
     );
   }
 
