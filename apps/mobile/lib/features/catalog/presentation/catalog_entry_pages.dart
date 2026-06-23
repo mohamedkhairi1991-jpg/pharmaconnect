@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:pharmaconnect_catalog/pharmaconnect_catalog.dart';
 import 'package:pharmaconnect_design_system/pharmaconnect_design_system.dart';
+
+const ProductListRequest _officialCatalogHomeRequest = ProductListRequest();
 
 class MobileOfficialCatalogEntryPage extends StatelessWidget {
   const MobileOfficialCatalogEntryPage({super.key});
@@ -21,7 +25,7 @@ class MobileCompanyCatalogEntryPage extends StatelessWidget {
   }
 }
 
-class _OfficialCatalogHome extends StatelessWidget {
+class _OfficialCatalogHome extends ConsumerWidget {
   const _OfficialCatalogHome();
 
   static const Color _background = Color(0xFF0B111B);
@@ -30,7 +34,11 @@ class _OfficialCatalogHome extends StatelessWidget {
   static const Color _mutedText = Color(0xFF93A3B8);
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final AsyncValue<List<ProductSummary>> products = ref.watch(
+      officialProductListProvider(_officialCatalogHomeRequest),
+    );
+
     return Scaffold(
       backgroundColor: _background,
       body: SafeArea(
@@ -49,47 +57,34 @@ class _OfficialCatalogHome extends StatelessWidget {
               child: Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 720),
-                  child: const Column(
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      _CatalogHeader(),
-                      SizedBox(height: PharmaConnectSpacing.large),
-                      _CatalogSearchBar(),
-                      SizedBox(height: PharmaConnectSpacing.large),
-                      _SectionHeading(
+                      const _CatalogHeader(),
+                      const SizedBox(height: PharmaConnectSpacing.large),
+                      const _CatalogSearchBar(),
+                      const SizedBox(height: PharmaConnectSpacing.large),
+                      const _SectionHeading(
                         title: 'Explore catalog',
                         trailing: 'Official sources',
                       ),
-                      SizedBox(height: 14),
-                      _QuickActionStrip(),
-                      SizedBox(height: 28),
-                      _CategoryChips(),
-                      SizedBox(height: 28),
-                      _SectionHeading(
-                        title: 'Catalog updates',
-                        trailing: 'View all',
+                      const SizedBox(height: 14),
+                      const _QuickActionStrip(),
+                      const SizedBox(height: 28),
+                      const _CategoryChips(),
+                      const SizedBox(height: 28),
+                      const _SectionHeading(
+                        title: 'Official products',
+                        trailing: 'Provider data',
                       ),
-                      SizedBox(height: 14),
-                      _FeaturedUpdateCard(),
-                      SizedBox(height: 14),
-                      _CompactUpdateCard(
-                        icon: Icons.science_outlined,
-                        accent: Color(0xFF8C7CFF),
-                        eyebrow: 'DRUG INFORMATION',
-                        title: 'Updated prescribing guidance',
-                        subtitle:
-                            'New clinical and safety information is available.',
-                        meta: 'Updated today',
-                      ),
-                      SizedBox(height: 14),
-                      _CompactUpdateCard(
-                        icon: Icons.apartment_rounded,
-                        accent: Color(0xFF20C8B7),
-                        eyebrow: 'COMPANY HIGHLIGHT',
-                        title: 'Official company catalog highlights',
-                        subtitle:
-                            'Browse newly verified catalog contributions.',
-                        meta: '12 catalog updates',
+                      const SizedBox(height: 14),
+                      _OfficialProductSection(
+                        products: products,
+                        onRetry: () => ref.invalidate(
+                          officialProductListProvider(
+                            _officialCatalogHomeRequest,
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -426,11 +421,70 @@ class _CategoryChips extends StatelessWidget {
   }
 }
 
-class _FeaturedUpdateCard extends StatelessWidget {
-  const _FeaturedUpdateCard();
+class _OfficialProductSection extends StatelessWidget {
+  const _OfficialProductSection({
+    required this.products,
+    required this.onRetry,
+  });
+
+  final AsyncValue<List<ProductSummary>> products;
+  final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
+    if (products.hasError) {
+      return _CatalogStateCard(
+        icon: Icons.error_outline_rounded,
+        accent: const Color(0xFFFF9B8D),
+        title: 'Catalog information could not load',
+        subtitle: 'Please try again or return later.',
+        actionLabel: 'Retry',
+        onAction: onRetry,
+      );
+    }
+
+    if (products.isLoading) {
+      return const _CatalogStateCard(
+        icon: Icons.sync_rounded,
+        accent: Color(0xFF35C9B7),
+        title: 'Loading official catalog',
+        subtitle: 'Fetching verified product information for this session.',
+      );
+    }
+
+    final List<ProductSummary> productList = products.requireValue;
+    if (productList.isEmpty) {
+      return const _CatalogStateCard(
+        icon: Icons.inventory_2_outlined,
+        accent: Color(0xFF8C7CFF),
+        title: 'No official products yet',
+        subtitle: 'Published catalog entries will appear here.',
+      );
+    }
+
+    return Column(
+      children: <Widget>[
+        for (int index = 0; index < productList.length && index < 6; index++)
+          Padding(
+            padding: EdgeInsets.only(top: index == 0 ? 0 : 14),
+            child: index == 0
+                ? _FeaturedProductCard(product: productList[index])
+                : _ProductUpdateCard(product: productList[index]),
+          ),
+      ],
+    );
+  }
+}
+
+class _FeaturedProductCard extends StatelessWidget {
+  const _FeaturedProductCard({required this.product});
+
+  final ProductSummary product;
+
+  @override
+  Widget build(BuildContext context) {
+    final _ProductDisplayData data = _ProductDisplayData.fromProduct(product);
+
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
@@ -458,7 +512,7 @@ class _FeaturedUpdateCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
                       const Text(
-                        'RECENTLY PUBLISHED',
+                        'RECENTLY UPDATED',
                         style: TextStyle(
                           color: Color(0xFF38CDBB),
                           fontSize: 11,
@@ -467,9 +521,11 @@ class _FeaturedUpdateCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 10),
-                      const Text(
-                        'New official products are now available',
-                        style: TextStyle(
+                      Text(
+                        data.brandName,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 19,
                           height: 1.25,
@@ -478,9 +534,11 @@ class _FeaturedUpdateCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 9),
-                      const Text(
-                        'Review verified product information published this week.',
-                        style: TextStyle(
+                      Text(
+                        data.genericName,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
                           color: _OfficialCatalogHome._mutedText,
                           fontSize: 13,
                           height: 1.45,
@@ -498,9 +556,11 @@ class _FeaturedUpdateCard extends StatelessWidget {
                               color: Colors.white.withValues(alpha: 0.08),
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: const Text(
-                              '18 new products',
-                              style: TextStyle(
+                            child: Text(
+                              data.presentation,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
@@ -508,10 +568,17 @@ class _FeaturedUpdateCard extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          const Icon(
-                            Icons.arrow_forward_rounded,
-                            color: Color(0xFF3DD3C1),
-                            size: 19,
+                          Flexible(
+                            child: Text(
+                              data.companyName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Color(0xFFB8C4D3),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ),
                         ],
                       ),
@@ -544,25 +611,16 @@ class _FeaturedUpdateCard extends StatelessWidget {
   }
 }
 
-class _CompactUpdateCard extends StatelessWidget {
-  const _CompactUpdateCard({
-    required this.icon,
-    required this.accent,
-    required this.eyebrow,
-    required this.title,
-    required this.subtitle,
-    required this.meta,
-  });
+class _ProductUpdateCard extends StatelessWidget {
+  const _ProductUpdateCard({required this.product});
 
-  final IconData icon;
-  final Color accent;
-  final String eyebrow;
-  final String title;
-  final String subtitle;
-  final String meta;
+  final ProductSummary product;
 
   @override
   Widget build(BuildContext context) {
+    final _ProductDisplayData data = _ProductDisplayData.fromProduct(product);
+    const Color accent = Color(0xFF8C7CFF);
+
     return Container(
       padding: const EdgeInsets.all(17),
       decoration: BoxDecoration(
@@ -579,15 +637,19 @@ class _CompactUpdateCard extends StatelessWidget {
               color: accent.withValues(alpha: 0.16),
               borderRadius: BorderRadius.circular(17),
             ),
-            child: Icon(icon, color: accent, size: 27),
+            child: const Icon(
+              Icons.medication_outlined,
+              color: accent,
+              size: 27,
+            ),
           ),
           const SizedBox(width: 15),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Text(
-                  eyebrow,
+                const Text(
+                  'OFFICIAL PRODUCT',
                   style: TextStyle(
                     color: accent,
                     fontSize: 9,
@@ -597,7 +659,7 @@ class _CompactUpdateCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 5),
                 Text(
-                  title,
+                  data.brandName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -608,7 +670,7 @@ class _CompactUpdateCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  subtitle,
+                  data.genericName,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -619,7 +681,9 @@ class _CompactUpdateCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 7),
                 Text(
-                  meta,
+                  '${data.companyName} • ${data.presentation}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: Color(0xFFB8C4D3),
                     fontSize: 10,
@@ -635,6 +699,134 @@ class _CompactUpdateCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _CatalogStateCard extends StatelessWidget {
+  const _CatalogStateCard({
+    required this.icon,
+    required this.accent,
+    required this.title,
+    required this.subtitle,
+    this.actionLabel,
+    this.onAction,
+  });
+
+  final IconData icon;
+  final Color accent;
+  final String title;
+  final String subtitle;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: _OfficialCatalogHome._surfaceSoft,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: <Widget>[
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: accent.withValues(alpha: 0.16),
+              borderRadius: BorderRadius.circular(17),
+            ),
+            child: Icon(icon, color: accent, size: 26),
+          ),
+          const SizedBox(width: 15),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    color: _OfficialCatalogHome._mutedText,
+                    fontSize: 12,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (actionLabel != null && onAction != null) ...<Widget>[
+            const SizedBox(width: 10),
+            TextButton(onPressed: onAction, child: Text(actionLabel!)),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+final class _ProductDisplayData {
+  const _ProductDisplayData({
+    required this.brandName,
+    required this.genericName,
+    required this.companyName,
+    required this.presentation,
+  });
+
+  final String brandName;
+  final String genericName;
+  final String companyName;
+  final String presentation;
+
+  static _ProductDisplayData fromProduct(ProductSummary product) {
+    final String brandName = _fallback(
+      product.translations.resolve(ContentLocale.english)?.brandName,
+      'Unnamed product',
+    );
+    final String genericName = _fallback(
+      product.genericDrug?.translations.resolve(ContentLocale.english)?.name,
+      'Generic name not recorded',
+    );
+    final String companyName = _fallback(
+      product.company.companyName,
+      'Company not recorded',
+    );
+    final ProductMarket? market = product.iraqMarket;
+    final List<String> presentationParts = <String>[
+      if (_hasText(market?.strength)) market!.strength,
+      if (_hasText(market?.dosageForm)) market!.dosageForm,
+    ];
+    final String presentation = presentationParts.isEmpty
+        ? 'Presentation not recorded'
+        : presentationParts.join(' • ');
+
+    return _ProductDisplayData(
+      brandName: brandName,
+      genericName: genericName,
+      companyName: companyName,
+      presentation: presentation,
+    );
+  }
+
+  static String _fallback(String? value, String fallback) {
+    if (!_hasText(value)) {
+      return fallback;
+    }
+    return value!.trim();
+  }
+
+  static bool _hasText(String? value) =>
+      value != null && value.trim().isNotEmpty;
 }
 
 class _DecorativeOrb extends StatelessWidget {
