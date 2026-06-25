@@ -72,12 +72,46 @@ void main() {
       ),
       isNull,
     );
+
+    expect(
+      mobileAuthRedirect(
+        location: '/catalog/products/product-id',
+        authState: authenticated,
+        principal: const AsyncData(
+          SessionPrincipal(
+            kind: SessionPrincipalKind.healthcareProfessional,
+            profile: null,
+          ),
+        ),
+        catalogAccess: const AsyncData(
+          CatalogAccessState(CatalogAudience.officialCatalog),
+        ),
+      ),
+      isNull,
+    );
   });
 
   test('official catalog denies pharmacist or unauthorized access', () {
     expect(
       mobileAuthRedirect(
         location: mobileOfficialCatalogPath,
+        authState: authenticated,
+        principal: const AsyncData(
+          SessionPrincipal(
+            kind: SessionPrincipalKind.healthcareProfessional,
+            profile: null,
+          ),
+        ),
+        catalogAccess: const AsyncData(
+          CatalogAccessState(CatalogAudience.roleIneligible),
+        ),
+      ),
+      mobileAccountUnavailablePath,
+    );
+
+    expect(
+      mobileAuthRedirect(
+        location: '/catalog/products/product-id',
         authState: authenticated,
         principal: const AsyncData(
           SessionPrincipal(

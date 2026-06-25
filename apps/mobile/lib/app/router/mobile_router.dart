@@ -22,6 +22,7 @@ const String mobileSessionStatusPath = '/session/status';
 const String mobileAccountUnavailablePath = '/session/unavailable';
 const String mobileAuthenticatedPath = '/session';
 const String mobileOfficialCatalogPath = '/catalog';
+const String mobileOfficialCatalogProductPath = '/catalog/products/:productId';
 const String mobileCompanyCatalogPath = '/company/catalog';
 
 const String _catalogTargetQueryParameter = 'catalogTarget';
@@ -31,7 +32,7 @@ final Provider<GoRouter> mobileRouterProvider = Provider<GoRouter>((Ref ref) {
   router = GoRouter(
     initialLocation: mobileSessionLoadingPath,
     redirect: (context, state) => mobileAuthRedirect(
-      location: state.matchedLocation,
+      location: state.uri.path,
       authState: ref.read(authStateProvider),
       principal: ref.read(sessionPrincipalProvider),
       catalogAccess: ref.read(catalogAccessStateProvider),
@@ -83,6 +84,12 @@ final Provider<GoRouter> mobileRouterProvider = Provider<GoRouter>((Ref ref) {
       GoRoute(
         path: mobileOfficialCatalogPath,
         builder: (context, state) => const MobileOfficialCatalogEntryPage(),
+      ),
+      GoRoute(
+        path: mobileOfficialCatalogProductPath,
+        builder: (context, state) => MobileOfficialCatalogProductDetailPage(
+          productId: state.pathParameters['productId'] ?? '',
+        ),
       ),
       GoRoute(
         path: mobileCompanyCatalogPath,
@@ -183,7 +190,7 @@ String? mobileAuthRedirect({
     }
 
     final bool allowed = switch (catalogTarget) {
-      mobileOfficialCatalogPath =>
+      final String target when _isOfficialCatalogLocation(target) =>
         principalKind == SessionPrincipalKind.healthcareProfessional &&
             access.requireValue.canReadOfficialCatalog,
       mobileCompanyCatalogPath =>
@@ -207,13 +214,24 @@ String? _catalogTargetForLocation(
   String? pendingCatalogLocation,
 ) {
   if (location == mobileOfficialCatalogPath ||
+      _isOfficialCatalogDetailLocation(location) ||
       location == mobileCompanyCatalogPath) {
     return location;
   }
   if (location == mobileSessionLoadingPath &&
       (pendingCatalogLocation == mobileOfficialCatalogPath ||
+          _isOfficialCatalogDetailLocation(pendingCatalogLocation) ||
           pendingCatalogLocation == mobileCompanyCatalogPath)) {
     return pendingCatalogLocation;
   }
   return null;
+}
+
+bool _isOfficialCatalogLocation(String location) {
+  return location == mobileOfficialCatalogPath ||
+      _isOfficialCatalogDetailLocation(location);
+}
+
+bool _isOfficialCatalogDetailLocation(String? location) {
+  return location != null && location.startsWith('/catalog/products/');
 }
