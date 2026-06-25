@@ -46,6 +46,8 @@ String _taxonomyName(
   return name.trim();
 }
 
+bool _hasCatalogText(String? value) => value != null && value.trim().isNotEmpty;
+
 class MobileOfficialCatalogEntryPage extends StatelessWidget {
   const MobileOfficialCatalogEntryPage({super.key});
 
@@ -745,15 +747,15 @@ class _CompanyProductDetailSheetState
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Draft updated.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Workflow product updated.')),
+      );
     } catch (_) {
       if (!mounted) {
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Draft could not be updated.')),
+        const SnackBar(content: Text('Workflow product could not be updated.')),
       );
     } finally {
       if (mounted) {
@@ -765,7 +767,7 @@ class _CompanyProductDetailSheetState
   }
 
   Future<void> _submitForReview(ProductDetail product) async {
-    if (product.status != ProductLifecycleStatus.draft || _isSubmitting) {
+    if (!product.status.isCompanyEditable || _isSubmitting) {
       return;
     }
 
@@ -945,7 +947,7 @@ class _CompanyProductDetailContent extends ConsumerWidget {
     final _ProductDetailDisplayData data = _ProductDetailDisplayData.fromDetail(
       product,
     );
-    final bool isDraft = product.status == ProductLifecycleStatus.draft;
+    final bool isCompanyEditable = product.status.isCompanyEditable;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -971,6 +973,8 @@ class _CompanyProductDetailContent extends ConsumerWidget {
                 'Published',
                 _formatShortDate(product.lifecycle.publishedAt!),
               ),
+            if (_hasCatalogText(product.lifecycle.reviewReason))
+              _DetailInfoRow('Review note', product.lifecycle.reviewReason!),
           ],
         ),
         const SizedBox(height: 14),
@@ -992,7 +996,7 @@ class _CompanyProductDetailContent extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: 14),
-        if (isDraft)
+        if (isCompanyEditable)
           _DraftEditShell(
             product: product,
             category: category ?? product.category,
@@ -1009,7 +1013,8 @@ class _CompanyProductDetailContent extends ConsumerWidget {
             icon: Icons.lock_outline_rounded,
             accent: Color(0xFF8C7CFF),
             title: 'Read-only workflow item',
-            subtitle: 'Only draft products can be edited in this phase.',
+            subtitle:
+                'Only draft or changes-requested products can be edited in this phase.',
           ),
       ],
     );
@@ -1057,15 +1062,16 @@ class _DraftEditShell extends ConsumerWidget {
         icon: Icons.sync_rounded,
         accent: Color(0xFF35C9B7),
         title: 'Loading edit fields',
-        subtitle: 'Fetching taxonomy choices for this draft.',
+        subtitle: 'Fetching taxonomy choices for this workflow product.',
       );
     }
     if (drugClasses.hasError) {
       return const _CatalogStateCard(
         icon: Icons.error_outline_rounded,
         accent: Color(0xFFFF9B8D),
-        title: 'Draft edit unavailable',
-        subtitle: 'Taxonomy choices are required to update this draft safely.',
+        title: 'Workflow edit unavailable',
+        subtitle:
+            'Taxonomy choices are required to update this product safely.',
       );
     }
 
@@ -1074,7 +1080,7 @@ class _DraftEditShell extends ConsumerWidget {
       return const _CatalogStateCard(
         icon: Icons.category_outlined,
         accent: Color(0xFF8C7CFF),
-        title: 'Draft edit unavailable',
+        title: 'Workflow edit unavailable',
         subtitle: 'No provider-supplied drug classes are available.',
       );
     }
@@ -1085,7 +1091,7 @@ class _DraftEditShell extends ConsumerWidget {
       return const _CatalogStateCard(
         icon: Icons.category_outlined,
         accent: Color(0xFF8C7CFF),
-        title: 'Draft edit unavailable',
+        title: 'Workflow edit unavailable',
         subtitle:
             'The current drug class is missing from provider-supplied taxonomy choices.',
       );
@@ -1103,7 +1109,7 @@ class _DraftEditShell extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           const _DetailSectionTitle(
-            title: 'Draft edit shell',
+            title: 'Workflow edit shell',
             icon: Icons.edit_note_rounded,
           ),
           const SizedBox(height: 14),
@@ -1152,7 +1158,9 @@ class _DraftEditShell extends ConsumerWidget {
                 disabledForegroundColor: Colors.white.withValues(alpha: 0.38),
                 padding: const EdgeInsets.symmetric(vertical: 14),
               ),
-              child: Text(isSaving ? 'Saving draft...' : 'Save draft changes'),
+              child: Text(
+                isSaving ? 'Saving changes...' : 'Save workflow changes',
+              ),
             ),
           ),
           const SizedBox(height: 14),
