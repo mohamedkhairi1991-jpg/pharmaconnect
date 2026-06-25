@@ -717,6 +717,7 @@ class _CompanyProductDetailSheetState
   ProductCategory? _category;
   String? _drugClassId;
   bool _isSaving = false;
+  bool _isSubmitting = false;
 
   Future<void> _save(ProductDetail product) async {
     final ProductCategory category = _category ?? product.category;
@@ -758,6 +759,42 @@ class _CompanyProductDetailSheetState
       if (mounted) {
         setState(() {
           _isSaving = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _submitForReview(ProductDetail product) async {
+    if (product.status != ProductLifecycleStatus.draft || _isSubmitting) {
+      return;
+    }
+
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    try {
+      await ref
+          .read(companyCatalogMutationController.notifier)
+          .submitForReview(product.id);
+
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Product submitted for review.')),
+      );
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Product could not be submitted.')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
         });
       }
     }
@@ -829,6 +866,7 @@ class _CompanyProductDetailSheetState
                     category: _category,
                     drugClassId: _drugClassId,
                     isSaving: _isSaving,
+                    isSubmitting: _isSubmitting,
                     onCategoryChanged: (ProductCategory value) {
                       setState(() {
                         _category = value;
@@ -840,6 +878,7 @@ class _CompanyProductDetailSheetState
                       });
                     },
                     onSave: _save,
+                    onSubmitForReview: _submitForReview,
                   ),
               ],
             ),
@@ -856,18 +895,22 @@ class _CompanyProductDetailContent extends ConsumerWidget {
     required this.category,
     required this.drugClassId,
     required this.isSaving,
+    required this.isSubmitting,
     required this.onCategoryChanged,
     required this.onDrugClassChanged,
     required this.onSave,
+    required this.onSubmitForReview,
   });
 
   final AsyncValue<ProductDetail> detail;
   final ProductCategory? category;
   final String? drugClassId;
   final bool isSaving;
+  final bool isSubmitting;
   final ValueChanged<ProductCategory> onCategoryChanged;
   final ValueChanged<String> onDrugClassChanged;
   final Future<void> Function(ProductDetail product) onSave;
+  final Future<void> Function(ProductDetail product) onSubmitForReview;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -955,9 +998,11 @@ class _CompanyProductDetailContent extends ConsumerWidget {
             category: category ?? product.category,
             drugClassId: drugClassId ?? product.drugClass.id,
             isSaving: isSaving,
+            isSubmitting: isSubmitting,
             onCategoryChanged: onCategoryChanged,
             onDrugClassChanged: onDrugClassChanged,
             onSave: onSave,
+            onSubmitForReview: onSubmitForReview,
           )
         else
           const _CatalogStateCard(
@@ -977,23 +1022,35 @@ class _DraftEditShell extends ConsumerWidget {
     required this.category,
     required this.drugClassId,
     required this.isSaving,
+    required this.isSubmitting,
     required this.onCategoryChanged,
     required this.onDrugClassChanged,
     required this.onSave,
+    required this.onSubmitForReview,
   });
 
   final ProductDetail product;
   final ProductCategory category;
   final String drugClassId;
   final bool isSaving;
+  final bool isSubmitting;
   final ValueChanged<ProductCategory> onCategoryChanged;
   final ValueChanged<String> onDrugClassChanged;
   final Future<void> Function(ProductDetail product) onSave;
+  final Future<void> Function(ProductDetail product) onSubmitForReview;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<List<DrugClass>> drugClasses = ref.watch(
       catalogDrugClassesProvider,
+    );
+    final AsyncValue<CatalogReadinessResult> readiness = ref.watch(
+      companyProductReadinessProvider(
+        CompanyProductReadinessRequest(
+          productId: product.id,
+          stage: CatalogReadinessStage.submission,
+        ),
+      ),
     );
     if (drugClasses.isLoading) {
       return const _CatalogStateCard(
@@ -1096,6 +1153,135 @@ class _DraftEditShell extends ConsumerWidget {
                 padding: const EdgeInsets.symmetric(vertical: 14),
               ),
               child: Text(isSaving ? 'Saving draft...' : 'Save draft changes'),
+            ),
+          ),
+          const SizedBox(height: 14),
+          _SubmissionReadinessCard(
+            readiness: readiness,
+            isSubmitting: isSubmitting,
+            onSubmit: () => onSubmitForReview(product),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SubmissionReadinessCard extends StatelessWidget {
+  const _SubmissionReadinessCard({
+    required this.readiness,
+    required this.isSubmitting,
+    required this.onSubmit,
+  });
+
+  final AsyncValue<CatalogReadinessResult> readiness;
+  final bool isSubmitting;
+  final VoidCallback onSubmit;
+
+  @override
+  Widget build(BuildContext context) {
+    if (readiness.hasError) {
+      return const _CatalogStateCard(
+        icon: Icons.error_outline_rounded,
+        accent: Color(0xFFFF9B8D),
+        title: 'Submission readiness could not load',
+        subtitle:
+            'The submit action remains unavailable until readiness loads.',
+      );
+    }
+
+    if (readiness.isLoading) {
+      return const _CatalogStateCard(
+        icon: Icons.sync_rounded,
+        accent: Color(0xFF35C9B7),
+        title: 'Checking submission readiness',
+        subtitle:
+            'Provider readiness is advisory; submit validation remains authoritative.',
+      );
+    }
+
+    final CatalogReadinessResult result = readiness.requireValue;
+    if (!result.isReady) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: _OfficialCatalogHome._surface,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            const _DetailSectionTitle(
+              title: 'Not ready for review',
+              icon: Icons.rule_rounded,
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Resolve these provider-reported issues before submission.',
+              style: TextStyle(
+                color: _OfficialCatalogHome._mutedText,
+                fontSize: 12,
+                height: 1.35,
+              ),
+            ),
+            const SizedBox(height: 12),
+            for (final CatalogReadinessIssue issue
+                in result.issues) ...<Widget>[
+              Text(
+                _readableCatalogValue(issue.databaseValue),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  height: 1.35,
+                ),
+              ),
+              if (issue != result.issues.last) const SizedBox(height: 8),
+            ],
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: _OfficialCatalogHome._surface,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          const _DetailSectionTitle(
+            title: 'Ready for review',
+            icon: Icons.verified_outlined,
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Readiness is advisory. The submit action will still use server-side validation.',
+            style: TextStyle(
+              color: _OfficialCatalogHome._mutedText,
+              fontSize: 12,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: isSubmitting ? null : onSubmit,
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF35C9B7),
+                foregroundColor: const Color(0xFF06131F),
+                disabledBackgroundColor: Colors.white.withValues(alpha: 0.08),
+                disabledForegroundColor: Colors.white.withValues(alpha: 0.38),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              child: Text(isSubmitting ? 'Submitting...' : 'Submit for review'),
             ),
           ),
         ],
