@@ -35,6 +35,17 @@ String _formatShortDate(DateTime value) {
   return '${months[value.month - 1]} ${value.day}, ${value.year}';
 }
 
+String _taxonomyName(
+  LocalizedContent<TaxonomyTranslation> translations,
+  String fallback,
+) {
+  final String? name = translations.resolve(ContentLocale.english)?.name;
+  if (name == null || name.trim().isEmpty) {
+    return fallback;
+  }
+  return name.trim();
+}
+
 class MobileOfficialCatalogEntryPage extends StatelessWidget {
   const MobileOfficialCatalogEntryPage({super.key});
 
@@ -155,55 +166,393 @@ class _CompanyDraftActionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: _OfficialCatalogHome._surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+    return InkWell(
+      borderRadius: BorderRadius.circular(24),
+      onTap: () => showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (BuildContext context) => const _CreateDraftSheet(),
       ),
-      child: Row(
-        children: <Widget>[
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: const Color(0xFF35C9B7).withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(17),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: _OfficialCatalogHome._surface,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+        ),
+        child: Row(
+          children: <Widget>[
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: const Color(0xFF35C9B7).withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(17),
+              ),
+              child: const Icon(
+                Icons.add_circle_outline_rounded,
+                color: Color(0xFF35C9B7),
+                size: 27,
+              ),
             ),
-            child: const Icon(
-              Icons.add_circle_outline_rounded,
-              color: Color(0xFF35C9B7),
-              size: 27,
+            const SizedBox(width: 15),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    'Create product draft',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  SizedBox(height: 5),
+                  Text(
+                    'Start a minimal official catalog workflow draft.',
+                    style: TextStyle(
+                      color: _OfficialCatalogHome._mutedText,
+                      fontSize: 12,
+                      height: 1.35,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: 15),
-          const Expanded(
+            const SizedBox(width: 10),
+            const Icon(Icons.chevron_right_rounded, color: Color(0xFF718197)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CreateDraftSheet extends ConsumerStatefulWidget {
+  const _CreateDraftSheet();
+
+  @override
+  ConsumerState<_CreateDraftSheet> createState() => _CreateDraftSheetState();
+}
+
+class _CreateDraftSheetState extends ConsumerState<_CreateDraftSheet> {
+  final TextEditingController _brandNameController = TextEditingController();
+  ProductCategory _category = ProductCategory.prescriptionDrug;
+  String? _selectedDrugClassId;
+  bool _isSubmitting = false;
+
+  @override
+  void dispose() {
+    _brandNameController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit(CatalogCompanyAccess companyAccess) async {
+    final String brandName = _brandNameController.text.trim();
+    final String? drugClassId = _selectedDrugClassId;
+    if (brandName.isEmpty || drugClassId == null || _isSubmitting) {
+      return;
+    }
+
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    try {
+      await ref
+          .read(companyCatalogMutationController.notifier)
+          .createDraft(
+            CreateProductDraftCommand(
+              companyId: companyAccess.companyId,
+              category: _category,
+              drugClassId: drugClassId,
+              englishBrandName: brandName,
+            ),
+          );
+
+      if (!mounted) {
+        return;
+      }
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Product draft created.')));
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Product draft could not be created.')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final AsyncValue<CatalogCompanyAccess?> companyAccess = ref.watch(
+      currentCatalogCompanyAccessProvider,
+    );
+    final AsyncValue<List<DrugClass>> drugClasses = ref.watch(
+      catalogDrugClassesProvider,
+    );
+    final bool isLoading = companyAccess.isLoading || drugClasses.isLoading;
+    final bool hasError = companyAccess.hasError || drugClasses.hasError;
+    final CatalogCompanyAccess? access = companyAccess.hasValue
+        ? companyAccess.requireValue
+        : null;
+    final List<DrugClass> classes = drugClasses.hasValue
+        ? drugClasses.requireValue
+        : const <DrugClass>[];
+    if (classes.isNotEmpty &&
+        (_selectedDrugClassId == null ||
+            !classes.any(
+              (DrugClass value) => value.id == _selectedDrugClassId,
+            ))) {
+      _selectedDrugClassId = classes.first.id;
+    }
+    final bool canSubmit =
+        access != null &&
+        access.canManageDrafts &&
+        classes.isNotEmpty &&
+        _brandNameController.text.trim().isNotEmpty &&
+        !_isSubmitting;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+        decoration: const BoxDecoration(
+          color: _OfficialCatalogHome._background,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: SingleChildScrollView(
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Text(
+                Center(
+                  child: Container(
+                    width: 44,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                const Text(
                   'Create product draft',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 15,
+                    fontSize: 20,
                     fontWeight: FontWeight.w800,
+                    letterSpacing: -0.3,
                   ),
                 ),
-                SizedBox(height: 5),
-                Text(
-                  'UI placeholder only. Draft creation comes in a later phase.',
+                const SizedBox(height: 6),
+                const Text(
+                  'Enter only the fields required by the current catalog draft command.',
                   style: TextStyle(
                     color: _OfficialCatalogHome._mutedText,
                     fontSize: 12,
                     height: 1.35,
                   ),
                 ),
+                const SizedBox(height: 20),
+                if (isLoading)
+                  const _CatalogStateCard(
+                    icon: Icons.sync_rounded,
+                    accent: Color(0xFF35C9B7),
+                    title: 'Loading draft fields',
+                    subtitle: 'Fetching company and taxonomy data.',
+                  )
+                else if (hasError)
+                  const _CatalogStateCard(
+                    icon: Icons.error_outline_rounded,
+                    accent: Color(0xFFFF9B8D),
+                    title: 'Draft fields could not load',
+                    subtitle: 'Required provider data is unavailable.',
+                  )
+                else if (access == null || !access.canManageDrafts)
+                  const _CatalogStateCard(
+                    icon: Icons.lock_outline_rounded,
+                    accent: Color(0xFFFF9B8D),
+                    title: 'Draft creation unavailable',
+                    subtitle:
+                        'This account cannot manage company catalog drafts.',
+                  )
+                else if (classes.isEmpty)
+                  const _CatalogStateCard(
+                    icon: Icons.category_outlined,
+                    accent: Color(0xFF8C7CFF),
+                    title: 'No drug classes available',
+                    subtitle:
+                        'A provider-supplied drug class is required before creating a draft.',
+                  )
+                else ...<Widget>[
+                  _DraftTextField(
+                    controller: _brandNameController,
+                    label: 'English brand name',
+                    onChanged: (_) => setState(() {}),
+                  ),
+                  const SizedBox(height: 14),
+                  _DraftDropdown<ProductCategory>(
+                    label: 'Product category',
+                    value: _category,
+                    items: ProductCategory.values,
+                    itemLabel: (ProductCategory value) =>
+                        _readableCatalogValue(value.databaseValue),
+                    onChanged: (ProductCategory? value) {
+                      if (value != null) {
+                        setState(() {
+                          _category = value;
+                        });
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 14),
+                  _DraftDropdown<String>(
+                    label: 'Drug class',
+                    value: _selectedDrugClassId,
+                    items: classes.map((DrugClass value) => value.id).toList(),
+                    itemLabel: (String value) {
+                      final DrugClass drugClass = classes.firstWhere(
+                        (DrugClass candidate) => candidate.id == value,
+                      );
+                      return _taxonomyName(
+                        drugClass.translations,
+                        drugClass.code,
+                      );
+                    },
+                    onChanged: (String? value) {
+                      setState(() {
+                        _selectedDrugClassId = value;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: canSubmit ? () => _submit(access) : null,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: PharmaConnectColors.primary,
+                        foregroundColor: Colors.white,
+                        disabledBackgroundColor: Colors.white.withValues(
+                          alpha: 0.08,
+                        ),
+                        disabledForegroundColor: Colors.white.withValues(
+                          alpha: 0.38,
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      child: Text(
+                        _isSubmitting ? 'Creating draft...' : 'Create draft',
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
-        ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DraftTextField extends StatelessWidget {
+  const _DraftTextField({
+    required this.controller,
+    required this.label,
+    required this.onChanged,
+  });
+
+  final TextEditingController controller;
+  final String label;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      onChanged: onChanged,
+      cursorColor: const Color(0xFF35C9B7),
+      style: const TextStyle(color: Colors.white, fontSize: 14),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: _OfficialCatalogHome._mutedText),
+        filled: true,
+        fillColor: _OfficialCatalogHome._surface,
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.06)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: const BorderSide(color: Color(0xFF35C9B7)),
+        ),
+      ),
+    );
+  }
+}
+
+class _DraftDropdown<T> extends StatelessWidget {
+  const _DraftDropdown({
+    required this.label,
+    required this.value,
+    required this.items,
+    required this.itemLabel,
+    required this.onChanged,
+  });
+
+  final String label;
+  final T? value;
+  final List<T> items;
+  final String Function(T value) itemLabel;
+  final ValueChanged<T?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return DropdownButtonFormField<T>(
+      initialValue: value,
+      items: items
+          .map(
+            (T item) => DropdownMenuItem<T>(
+              value: item,
+              child: Text(itemLabel(item), overflow: TextOverflow.ellipsis),
+            ),
+          )
+          .toList(),
+      onChanged: onChanged,
+      dropdownColor: _OfficialCatalogHome._surface,
+      iconEnabledColor: const Color(0xFF35C9B7),
+      style: const TextStyle(color: Colors.white, fontSize: 14),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: _OfficialCatalogHome._mutedText),
+        filled: true,
+        fillColor: _OfficialCatalogHome._surface,
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.06)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: const BorderSide(color: Color(0xFF35C9B7)),
+        ),
       ),
     );
   }
