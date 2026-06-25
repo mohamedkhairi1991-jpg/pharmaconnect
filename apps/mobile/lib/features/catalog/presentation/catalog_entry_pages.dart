@@ -615,73 +615,487 @@ class _CompanyProductWorkflowCard extends StatelessWidget {
     final _ProductDisplayData data = _ProductDisplayData.fromProduct(product);
     final String status = _readableCatalogValue(product.status.databaseValue);
 
-    return Container(
-      padding: const EdgeInsets.all(17),
-      decoration: BoxDecoration(
-        color: _OfficialCatalogHome._surfaceSoft,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+    return InkWell(
+      borderRadius: BorderRadius.circular(22),
+      onTap: () => showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (BuildContext context) =>
+            _CompanyProductDetailSheet(productId: product.id),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Container(
-            width: 54,
-            height: 54,
-            decoration: BoxDecoration(
-              color: const Color(0xFF35C9B7).withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(17),
+      child: Container(
+        padding: const EdgeInsets.all(17),
+        decoration: BoxDecoration(
+          color: _OfficialCatalogHome._surfaceSoft,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Container(
+              width: 54,
+              height: 54,
+              decoration: BoxDecoration(
+                color: const Color(0xFF35C9B7).withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(17),
+              ),
+              child: const Icon(
+                Icons.inventory_2_outlined,
+                color: Color(0xFF35C9B7),
+                size: 25,
+              ),
             ),
-            child: const Icon(
-              Icons.inventory_2_outlined,
-              color: Color(0xFF35C9B7),
-              size: 25,
-            ),
-          ),
-          const SizedBox(width: 15),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Row(
-                  children: <Widget>[
-                    Expanded(
-                      child: Text(
-                        data.brandName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800,
+            const SizedBox(width: 15),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: Text(
+                          data.brandName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
                       ),
+                      const SizedBox(width: 8),
+                      _WorkflowStatusPill(label: status),
+                    ],
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    data.genericName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: _OfficialCatalogHome._mutedText,
+                      fontSize: 12,
+                      height: 1.35,
                     ),
-                    const SizedBox(width: 8),
-                    _WorkflowStatusPill(label: status),
-                  ],
+                  ),
+                  const SizedBox(height: 7),
+                  Text(
+                    'Updated ${_formatShortDate(product.updatedAt)}',
+                    style: const TextStyle(
+                      color: Color(0xFFB8C4D3),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(Icons.chevron_right_rounded, color: Color(0xFF718197)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CompanyProductDetailSheet extends ConsumerStatefulWidget {
+  const _CompanyProductDetailSheet({required this.productId});
+
+  final String productId;
+
+  @override
+  ConsumerState<_CompanyProductDetailSheet> createState() =>
+      _CompanyProductDetailSheetState();
+}
+
+class _CompanyProductDetailSheetState
+    extends ConsumerState<_CompanyProductDetailSheet> {
+  ProductCategory? _category;
+  String? _drugClassId;
+  bool _isSaving = false;
+
+  Future<void> _save(ProductDetail product) async {
+    final ProductCategory category = _category ?? product.category;
+    final String drugClassId = _drugClassId ?? product.drugClass.id;
+    if (_isSaving) {
+      return;
+    }
+
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      await ref
+          .read(companyCatalogMutationController.notifier)
+          .updateDraft(
+            UpdateProductDraftCommand(
+              productId: product.id,
+              category: category,
+              drugClassId: drugClassId,
+              genericDrugId: product.genericDrug?.id,
+            ),
+          );
+
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Draft updated.')));
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Draft could not be updated.')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final String productId = widget.productId.trim();
+    final AsyncValue<ProductDetail>? detail = productId.isEmpty
+        ? null
+        : ref.watch(companyProductDetailProvider(productId));
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+        decoration: const BoxDecoration(
+          color: _OfficialCatalogHome._background,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Center(
+                  child: Container(
+                    width: 44,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
                 ),
-                const SizedBox(height: 5),
-                Text(
-                  data.genericName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                const SizedBox(height: 18),
+                const Text(
+                  'Company product detail',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.3,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Workflow detail for the company catalog. Publication is separate.',
+                  style: TextStyle(
                     color: _OfficialCatalogHome._mutedText,
                     fontSize: 12,
                     height: 1.35,
                   ),
                 ),
-                const SizedBox(height: 7),
-                Text(
-                  'Updated ${_formatShortDate(product.updatedAt)}',
-                  style: const TextStyle(
-                    color: Color(0xFFB8C4D3),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
+                const SizedBox(height: 20),
+                if (detail == null)
+                  const _CatalogStateCard(
+                    icon: Icons.search_off_rounded,
+                    accent: Color(0xFFFF9B8D),
+                    title: 'Product not found',
+                    subtitle:
+                        'This workflow product could not be opened safely.',
+                  )
+                else
+                  _CompanyProductDetailContent(
+                    detail: detail,
+                    category: _category,
+                    drugClassId: _drugClassId,
+                    isSaving: _isSaving,
+                    onCategoryChanged: (ProductCategory value) {
+                      setState(() {
+                        _category = value;
+                      });
+                    },
+                    onDrugClassChanged: (String value) {
+                      setState(() {
+                        _drugClassId = value;
+                      });
+                    },
+                    onSave: _save,
                   ),
-                ),
               ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CompanyProductDetailContent extends ConsumerWidget {
+  const _CompanyProductDetailContent({
+    required this.detail,
+    required this.category,
+    required this.drugClassId,
+    required this.isSaving,
+    required this.onCategoryChanged,
+    required this.onDrugClassChanged,
+    required this.onSave,
+  });
+
+  final AsyncValue<ProductDetail> detail;
+  final ProductCategory? category;
+  final String? drugClassId;
+  final bool isSaving;
+  final ValueChanged<ProductCategory> onCategoryChanged;
+  final ValueChanged<String> onDrugClassChanged;
+  final Future<void> Function(ProductDetail product) onSave;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (detail.isLoading) {
+      return const _CatalogStateCard(
+        icon: Icons.sync_rounded,
+        accent: Color(0xFF35C9B7),
+        title: 'Loading product detail',
+        subtitle: 'Fetching company workflow product data for this session.',
+      );
+    }
+
+    if (detail.hasError) {
+      return const _CatalogStateCard(
+        icon: Icons.error_outline_rounded,
+        accent: Color(0xFFFF9B8D),
+        title: 'Product detail could not load',
+        subtitle: 'Please try again or return to the company catalog.',
+      );
+    }
+
+    if (!detail.hasValue) {
+      return const _CatalogStateCard(
+        icon: Icons.search_off_rounded,
+        accent: Color(0xFF8C7CFF),
+        title: 'Product not found',
+        subtitle: 'This company workflow product is not ready to display.',
+      );
+    }
+
+    final ProductDetail product = detail.requireValue;
+    final _ProductDetailDisplayData data = _ProductDetailDisplayData.fromDetail(
+      product,
+    );
+    final bool isDraft = product.status == ProductLifecycleStatus.draft;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        _DetailHeroCard(data: data),
+        const SizedBox(height: 14),
+        _DetailInfoSection(
+          title: 'Workflow status',
+          icon: Icons.timeline_rounded,
+          rows: <_DetailInfoRow>[
+            _DetailInfoRow(
+              'Lifecycle status',
+              _readableCatalogValue(product.status.databaseValue),
+            ),
+            _DetailInfoRow('Updated', _formatShortDate(product.updatedAt)),
+            if (product.lifecycle.submittedAt != null)
+              _DetailInfoRow(
+                'Submitted',
+                _formatShortDate(product.lifecycle.submittedAt!),
+              ),
+            if (product.lifecycle.publishedAt != null)
+              _DetailInfoRow(
+                'Published',
+                _formatShortDate(product.lifecycle.publishedAt!),
+              ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        _DetailInfoSection(
+          title: 'Product basics',
+          icon: Icons.medication_outlined,
+          rows: <_DetailInfoRow>[
+            _DetailInfoRow('Brand name', data.brandName),
+            _DetailInfoRow('Generic name', data.genericName),
+            _DetailInfoRow('Company', data.companyName),
+            _DetailInfoRow('Category', data.category),
+            _DetailInfoRow(
+              'Drug class',
+              _taxonomyName(
+                product.drugClass.translations,
+                product.drugClass.code,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        if (isDraft)
+          _DraftEditShell(
+            product: product,
+            category: category ?? product.category,
+            drugClassId: drugClassId ?? product.drugClass.id,
+            isSaving: isSaving,
+            onCategoryChanged: onCategoryChanged,
+            onDrugClassChanged: onDrugClassChanged,
+            onSave: onSave,
+          )
+        else
+          const _CatalogStateCard(
+            icon: Icons.lock_outline_rounded,
+            accent: Color(0xFF8C7CFF),
+            title: 'Read-only workflow item',
+            subtitle: 'Only draft products can be edited in this phase.',
+          ),
+      ],
+    );
+  }
+}
+
+class _DraftEditShell extends ConsumerWidget {
+  const _DraftEditShell({
+    required this.product,
+    required this.category,
+    required this.drugClassId,
+    required this.isSaving,
+    required this.onCategoryChanged,
+    required this.onDrugClassChanged,
+    required this.onSave,
+  });
+
+  final ProductDetail product;
+  final ProductCategory category;
+  final String drugClassId;
+  final bool isSaving;
+  final ValueChanged<ProductCategory> onCategoryChanged;
+  final ValueChanged<String> onDrugClassChanged;
+  final Future<void> Function(ProductDetail product) onSave;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final AsyncValue<List<DrugClass>> drugClasses = ref.watch(
+      catalogDrugClassesProvider,
+    );
+    if (drugClasses.isLoading) {
+      return const _CatalogStateCard(
+        icon: Icons.sync_rounded,
+        accent: Color(0xFF35C9B7),
+        title: 'Loading edit fields',
+        subtitle: 'Fetching taxonomy choices for this draft.',
+      );
+    }
+    if (drugClasses.hasError) {
+      return const _CatalogStateCard(
+        icon: Icons.error_outline_rounded,
+        accent: Color(0xFFFF9B8D),
+        title: 'Draft edit unavailable',
+        subtitle: 'Taxonomy choices are required to update this draft safely.',
+      );
+    }
+
+    final List<DrugClass> classes = drugClasses.requireValue;
+    if (classes.isEmpty) {
+      return const _CatalogStateCard(
+        icon: Icons.category_outlined,
+        accent: Color(0xFF8C7CFF),
+        title: 'Draft edit unavailable',
+        subtitle: 'No provider-supplied drug classes are available.',
+      );
+    }
+    final bool hasSelectedDrugClass = classes.any(
+      (DrugClass value) => value.id == drugClassId,
+    );
+    if (!hasSelectedDrugClass) {
+      return const _CatalogStateCard(
+        icon: Icons.category_outlined,
+        accent: Color(0xFF8C7CFF),
+        title: 'Draft edit unavailable',
+        subtitle:
+            'The current drug class is missing from provider-supplied taxonomy choices.',
+      );
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: _OfficialCatalogHome._surfaceSoft,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          const _DetailSectionTitle(
+            title: 'Draft edit shell',
+            icon: Icons.edit_note_rounded,
+          ),
+          const SizedBox(height: 14),
+          _DraftDropdown<ProductCategory>(
+            label: 'Product category',
+            value: category,
+            items: ProductCategory.values,
+            itemLabel: (ProductCategory value) =>
+                _readableCatalogValue(value.databaseValue),
+            onChanged: (ProductCategory? value) {
+              if (value != null) {
+                onCategoryChanged(value);
+              }
+            },
+          ),
+          const SizedBox(height: 14),
+          _DraftDropdown<String>(
+            label: 'Drug class',
+            value: drugClassId,
+            items: classes.map((DrugClass value) => value.id).toList(),
+            itemLabel: (String value) {
+              final DrugClass drugClass = classes.firstWhere(
+                (DrugClass candidate) => candidate.id == value,
+              );
+              return _taxonomyName(drugClass.translations, drugClass.code);
+            },
+            onChanged: (String? value) {
+              if (value != null) {
+                onDrugClassChanged(value);
+              }
+            },
+          ),
+          const SizedBox(height: 18),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: isSaving
+                  ? null
+                  : () {
+                      onSave(product);
+                    },
+              style: FilledButton.styleFrom(
+                backgroundColor: PharmaConnectColors.primary,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: Colors.white.withValues(alpha: 0.08),
+                disabledForegroundColor: Colors.white.withValues(alpha: 0.38),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              child: Text(isSaving ? 'Saving draft...' : 'Save draft changes'),
             ),
           ),
         ],
