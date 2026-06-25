@@ -301,13 +301,13 @@ class _AdminProductReviewDialog extends ConsumerWidget {
   }
 }
 
-class _AdminProductReviewDetailContent extends StatelessWidget {
+class _AdminProductReviewDetailContent extends ConsumerWidget {
   const _AdminProductReviewDetailContent({required this.detail});
 
   final AsyncValue<ProductDetail> detail;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     if (detail.hasError) {
       return const _ReviewQueueStateCard(
         icon: Icons.error_outline,
@@ -391,7 +391,7 @@ class _AdminProductReviewDetailContent extends StatelessWidget {
           ),
         ],
         const SizedBox(height: PharmaConnectSpacing.medium),
-        const _ReviewActionPlaceholder(),
+        _ReviewLifecycleActions(product: product),
       ],
     );
   }
@@ -537,31 +537,182 @@ class _ReviewDetailRowView extends StatelessWidget {
   }
 }
 
-class _ReviewActionPlaceholder extends StatelessWidget {
-  const _ReviewActionPlaceholder();
+class _ReviewLifecycleActions extends ConsumerWidget {
+  const _ReviewLifecycleActions({required this.product});
+
+  final ProductDetail product;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final bool isSubmitted = product.status == ProductLifecycleStatus.submitted;
+    if (!isSubmitted) {
+      return const _ReviewQueueStateCard(
+        icon: Icons.lock_outline,
+        title: 'Lifecycle actions unavailable',
+        message: 'Review actions are only available for submitted products.',
+      );
+    }
+
+    final AsyncValue<ProductDetail?> lifecycle = ref.watch(
+      adminCatalogLifecycleController,
+    );
+    final bool isWorking = lifecycle.isLoading;
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(PharmaConnectSpacing.large),
-        child: Wrap(
-          spacing: PharmaConnectSpacing.medium,
-          runSpacing: PharmaConnectSpacing.small,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            FilledButton.icon(
-              onPressed: null,
-              icon: const Icon(Icons.check_circle_outline),
-              label: const Text('Publish action later'),
+            Text(
+              'Lifecycle actions',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
             ),
-            OutlinedButton.icon(
-              onPressed: null,
-              icon: const Icon(Icons.rate_review_outlined),
-              label: const Text('Request changes later'),
+            const SizedBox(height: PharmaConnectSpacing.small),
+            const Text(
+              'Client checks are advisory. Server validation remains authoritative.',
+            ),
+            const SizedBox(height: PharmaConnectSpacing.medium),
+            Wrap(
+              spacing: PharmaConnectSpacing.medium,
+              runSpacing: PharmaConnectSpacing.small,
+              children: <Widget>[
+                FilledButton.icon(
+                  onPressed: isWorking
+                      ? null
+                      : () async {
+                          try {
+                            await ref
+                                .read(adminCatalogLifecycleController.notifier)
+                                .publish(product.id);
+                            if (!context.mounted) {
+                              return;
+                            }
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Product published.'),
+                              ),
+                            );
+                          } catch (_) {
+                            if (!context.mounted) {
+                              return;
+                            }
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Product could not be published.',
+                                ),
+                              ),
+                            );
+                          }
+                        },
+                  icon: const Icon(Icons.check_circle_outline),
+                  label: Text(isWorking ? 'Working...' : 'Publish'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: isWorking
+                      ? null
+                      : () async {
+                          final String? reason = await _requestChangesReason(
+                            context,
+                          );
+                          if (reason == null || reason.trim().isEmpty) {
+                            return;
+                          }
+                          try {
+                            await ref
+                                .read(adminCatalogLifecycleController.notifier)
+                                .requestChanges(product.id, reason.trim());
+                            if (!context.mounted) {
+                              return;
+                            }
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Changes requested.'),
+                              ),
+                            );
+                          } catch (_) {
+                            if (!context.mounted) {
+                              return;
+                            }
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Changes could not be requested.',
+                                ),
+                              ),
+                            );
+                          }
+                        },
+                  icon: const Icon(Icons.rate_review_outlined),
+                  label: Text(isWorking ? 'Working...' : 'Request changes'),
+                ),
+              ],
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+Future<String?> _requestChangesReason(BuildContext context) {
+  return showDialog<String>(
+    context: context,
+    builder: (BuildContext context) => const _RequestChangesDialog(),
+  );
+}
+
+class _RequestChangesDialog extends StatefulWidget {
+  const _RequestChangesDialog();
+
+  @override
+  State<_RequestChangesDialog> createState() => _RequestChangesDialogState();
+}
+
+class _RequestChangesDialogState extends State<_RequestChangesDialog> {
+  final TextEditingController _controller = TextEditingController();
+  bool _hasReason = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Request changes'),
+      content: TextField(
+        controller: _controller,
+        minLines: 3,
+        maxLines: 5,
+        decoration: const InputDecoration(
+          labelText: 'Reason',
+          hintText: 'Explain what the company should change.',
+          border: OutlineInputBorder(),
+        ),
+        onChanged: (String value) {
+          setState(() {
+            _hasReason = value.trim().isNotEmpty;
+          });
+        },
+      ),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: _hasReason
+              ? () => Navigator.of(context).pop(_controller.text.trim())
+              : null,
+          child: const Text('Request changes'),
+        ),
+      ],
     );
   }
 }
