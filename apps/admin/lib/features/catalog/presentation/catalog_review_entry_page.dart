@@ -224,15 +224,11 @@ class _ReviewQueueProductCard extends StatelessWidget {
             Align(
               alignment: Alignment.centerRight,
               child: OutlinedButton.icon(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Review detail flow is not implemented yet.',
-                      ),
-                    ),
-                  );
-                },
+                onPressed: () => showDialog<void>(
+                  context: context,
+                  builder: (BuildContext context) =>
+                      _AdminProductReviewDialog(productId: product.id),
+                ),
                 icon: const Icon(Icons.open_in_new),
                 label: const Text('Open review'),
               ),
@@ -242,6 +238,339 @@ class _ReviewQueueProductCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _AdminProductReviewDialog extends ConsumerWidget {
+  const _AdminProductReviewDialog({required this.productId});
+
+  final String productId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final String normalizedProductId = productId.trim();
+    final AsyncValue<ProductDetail>? detail = normalizedProductId.isEmpty
+        ? null
+        : ref.watch(adminProductDetailProvider(normalizedProductId));
+
+    return Dialog(
+      insetPadding: const EdgeInsets.all(PharmaConnectSpacing.medium),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 860),
+        child: Padding(
+          padding: const EdgeInsets.all(PharmaConnectSpacing.large),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              Row(
+                children: <Widget>[
+                  const Expanded(
+                    child: Text(
+                      'Product review detail',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Close review detail',
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+              const SizedBox(height: PharmaConnectSpacing.medium),
+              Flexible(
+                child: SingleChildScrollView(
+                  child: detail == null
+                      ? const _ReviewQueueStateCard(
+                          icon: Icons.search_off,
+                          title: 'Product not found',
+                          message:
+                              'This review item could not be opened safely.',
+                        )
+                      : _AdminProductReviewDetailContent(detail: detail),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AdminProductReviewDetailContent extends StatelessWidget {
+  const _AdminProductReviewDetailContent({required this.detail});
+
+  final AsyncValue<ProductDetail> detail;
+
+  @override
+  Widget build(BuildContext context) {
+    if (detail.hasError) {
+      return const _ReviewQueueStateCard(
+        icon: Icons.error_outline,
+        title: 'Product detail could not load',
+        message: 'Please try again later.',
+      );
+    }
+
+    if (detail.isLoading) {
+      return const _ReviewQueueStateCard(
+        icon: Icons.sync,
+        title: 'Loading product detail',
+        message: 'Fetching official catalog review information.',
+      );
+    }
+
+    if (!detail.hasValue) {
+      return const _ReviewQueueStateCard(
+        icon: Icons.search_off,
+        title: 'Product not found',
+        message: 'This submitted product is not ready to display.',
+      );
+    }
+
+    final ProductDetail product = detail.requireValue;
+    final _AdminProductDetailDisplay data =
+        _AdminProductDetailDisplay.fromProduct(product);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        _ReviewDetailHeader(data: data),
+        const SizedBox(height: PharmaConnectSpacing.medium),
+        _ReviewDetailSection(
+          title: 'Product basics',
+          icon: Icons.medication_outlined,
+          rows: <_ReviewDetailRow>[
+            _ReviewDetailRow('Category', data.category),
+            _ReviewDetailRow('Dosage form', data.dosageForm),
+            _ReviewDetailRow('Strength', data.strength),
+            _ReviewDetailRow('Route', data.route),
+            _ReviewDetailRow('Package', data.packSize),
+          ],
+        ),
+        if (data.composition.isNotEmpty) ...<Widget>[
+          const SizedBox(height: PharmaConnectSpacing.medium),
+          _ReviewDetailTextSection(
+            title: 'Composition',
+            icon: Icons.science_outlined,
+            items: data.composition,
+          ),
+        ],
+        if (data.marketRows.isNotEmpty) ...<Widget>[
+          const SizedBox(height: PharmaConnectSpacing.medium),
+          _ReviewDetailSection(
+            title: 'Iraq market metadata',
+            icon: Icons.verified_outlined,
+            rows: data.marketRows,
+          ),
+        ],
+        if (data.clinicalRows.isNotEmpty) ...<Widget>[
+          const SizedBox(height: PharmaConnectSpacing.medium),
+          _ReviewDetailSection(
+            title: 'Clinical catalog text',
+            icon: Icons.health_and_safety_outlined,
+            rows: data.clinicalRows,
+          ),
+        ],
+        const SizedBox(height: PharmaConnectSpacing.medium),
+        _ReviewDetailSection(
+          title: 'Review metadata',
+          icon: Icons.assignment_outlined,
+          rows: data.reviewRows,
+        ),
+        if (data.metadataRows.isNotEmpty) ...<Widget>[
+          const SizedBox(height: PharmaConnectSpacing.medium),
+          _ReviewDetailSection(
+            title: 'Media and brochure metadata',
+            icon: Icons.perm_media_outlined,
+            rows: data.metadataRows,
+          ),
+        ],
+        const SizedBox(height: PharmaConnectSpacing.medium),
+        const _ReviewActionPlaceholder(),
+      ],
+    );
+  }
+}
+
+class _ReviewDetailHeader extends StatelessWidget {
+  const _ReviewDetailHeader({required this.data});
+
+  final _AdminProductDetailDisplay data;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(PharmaConnectSpacing.large),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              data.brandName,
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(data.genericName, style: theme.textTheme.bodyLarge),
+            const SizedBox(height: PharmaConnectSpacing.medium),
+            Wrap(
+              spacing: PharmaConnectSpacing.medium,
+              runSpacing: PharmaConnectSpacing.small,
+              children: <Widget>[
+                _MetadataText(label: 'Company', value: data.companyName),
+                _MetadataText(label: 'Status', value: data.status),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ReviewDetailSection extends StatelessWidget {
+  const _ReviewDetailSection({
+    required this.title,
+    required this.icon,
+    required this.rows,
+  });
+
+  final String title;
+  final IconData icon;
+  final List<_ReviewDetailRow> rows;
+
+  @override
+  Widget build(BuildContext context) {
+    final List<_ReviewDetailRow> visibleRows = rows
+        .where((_ReviewDetailRow row) => row.value.trim().isNotEmpty)
+        .toList(growable: false);
+    if (visibleRows.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final ThemeData theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(PharmaConnectSpacing.large),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                Icon(icon, color: theme.colorScheme.primary),
+                const SizedBox(width: PharmaConnectSpacing.small),
+                Text(
+                  title,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: PharmaConnectSpacing.medium),
+            for (
+              int index = 0;
+              index < visibleRows.length;
+              index++
+            ) ...<Widget>[
+              _ReviewDetailRowView(row: visibleRows[index]),
+              if (index != visibleRows.length - 1)
+                const SizedBox(height: PharmaConnectSpacing.small),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ReviewDetailTextSection extends StatelessWidget {
+  const _ReviewDetailTextSection({
+    required this.title,
+    required this.icon,
+    required this.items,
+  });
+
+  final String title;
+  final IconData icon;
+  final List<String> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return _ReviewDetailSection(
+      title: title,
+      icon: icon,
+      rows: items
+          .map((String item) => _ReviewDetailRow('Ingredient', item))
+          .toList(growable: false),
+    );
+  }
+}
+
+class _ReviewDetailRowView extends StatelessWidget {
+  const _ReviewDetailRowView({required this.row});
+
+  final _ReviewDetailRow row;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    return Text.rich(
+      TextSpan(
+        children: <InlineSpan>[
+          TextSpan(
+            text: '${row.label}: ',
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+          TextSpan(text: row.value),
+        ],
+      ),
+      style: theme.textTheme.bodyMedium,
+    );
+  }
+}
+
+class _ReviewActionPlaceholder extends StatelessWidget {
+  const _ReviewActionPlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(PharmaConnectSpacing.large),
+        child: Wrap(
+          spacing: PharmaConnectSpacing.medium,
+          runSpacing: PharmaConnectSpacing.small,
+          children: <Widget>[
+            FilledButton.icon(
+              onPressed: null,
+              icon: const Icon(Icons.check_circle_outline),
+              label: const Text('Publish action later'),
+            ),
+            OutlinedButton.icon(
+              onPressed: null,
+              icon: const Icon(Icons.rate_review_outlined),
+              label: const Text('Request changes later'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+final class _ReviewDetailRow {
+  const _ReviewDetailRow(this.label, this.value);
+
+  final String label;
+  final String value;
 }
 
 class _StatusChip extends StatelessWidget {
@@ -324,6 +653,147 @@ final class _AdminProductSummaryDisplay {
     }
     return value.trim();
   }
+}
+
+final class _AdminProductDetailDisplay {
+  const _AdminProductDetailDisplay({
+    required this.brandName,
+    required this.genericName,
+    required this.companyName,
+    required this.status,
+    required this.category,
+    required this.dosageForm,
+    required this.strength,
+    required this.route,
+    required this.packSize,
+    required this.composition,
+    required this.marketRows,
+    required this.clinicalRows,
+    required this.reviewRows,
+    required this.metadataRows,
+  });
+
+  final String brandName;
+  final String genericName;
+  final String companyName;
+  final String status;
+  final String category;
+  final String dosageForm;
+  final String strength;
+  final String route;
+  final String packSize;
+  final List<String> composition;
+  final List<_ReviewDetailRow> marketRows;
+  final List<_ReviewDetailRow> clinicalRows;
+  final List<_ReviewDetailRow> reviewRows;
+  final List<_ReviewDetailRow> metadataRows;
+
+  static _AdminProductDetailDisplay fromProduct(ProductDetail product) {
+    final ProductMarket? market = product.iraqMarket;
+    final ProductMarketTranslation? marketTranslation = market?.translations
+        .resolve(ContentLocale.english);
+    final List<String> composition =
+        product.genericDrug?.composition
+            .map(
+              (GenericCompositionEntry entry) => _fallback(
+                entry.ingredient.translations
+                    .resolve(ContentLocale.english)
+                    ?.name,
+                entry.ingredient.code,
+              ),
+            )
+            .where((String value) => value.trim().isNotEmpty)
+            .toList(growable: false) ??
+        const <String>[];
+    final List<_ReviewDetailRow> marketRows = <_ReviewDetailRow>[
+      if (_hasText(market?.registrationStatus.databaseValue))
+        _ReviewDetailRow(
+          'Registration status',
+          _readableCatalogValue(market!.registrationStatus.databaseValue),
+        ),
+      if (_hasText(market?.registrationNumber))
+        _ReviewDetailRow('Registration number', market!.registrationNumber!),
+      if (_hasText(market?.registrationAuthority))
+        _ReviewDetailRow(
+          'Registration authority',
+          market!.registrationAuthority!,
+        ),
+      if (_hasText(market?.marketStatus.databaseValue))
+        _ReviewDetailRow(
+          'Market status metadata',
+          _readableCatalogValue(market!.marketStatus.databaseValue),
+        ),
+    ];
+    final List<_ReviewDetailRow> clinicalRows = <_ReviewDetailRow>[
+      if (_hasText(marketTranslation?.approvedIndications))
+        _ReviewDetailRow('Indications', marketTranslation!.approvedIndications),
+      if (_hasText(marketTranslation?.usualAdultDose))
+        _ReviewDetailRow('Dosing notes', marketTranslation!.usualAdultDose),
+      if (_hasText(marketTranslation?.contraindications))
+        _ReviewDetailRow(
+          'Contraindications',
+          marketTranslation!.contraindications,
+        ),
+      if (_hasText(marketTranslation?.commonAdverseEffects))
+        _ReviewDetailRow('Warnings', marketTranslation!.commonAdverseEffects),
+    ];
+    final List<_ReviewDetailRow> reviewRows = <_ReviewDetailRow>[
+      _ReviewDetailRow('Updated', _formatShortDate(product.updatedAt)),
+      if (product.lifecycle.submittedAt != null)
+        _ReviewDetailRow(
+          'Submitted',
+          _formatShortDate(product.lifecycle.submittedAt!),
+        ),
+    ];
+    final List<_ReviewDetailRow> metadataRows = <_ReviewDetailRow>[
+      if (product.media.isNotEmpty)
+        _ReviewDetailRow(
+          'Media metadata',
+          '${product.media.length} item(s) recorded',
+        ),
+      if (product.brochures.isNotEmpty)
+        _ReviewDetailRow(
+          'Brochure metadata',
+          '${product.brochures.length} document(s) recorded',
+        ),
+    ];
+
+    return _AdminProductDetailDisplay(
+      brandName: _fallback(
+        product.translations.resolve(ContentLocale.english)?.brandName,
+        'Unnamed product',
+      ),
+      genericName: _fallback(
+        product.genericDrug?.translations.resolve(ContentLocale.english)?.name,
+        'Generic name not recorded',
+      ),
+      companyName: _fallback(
+        product.company.companyName,
+        'Company not recorded',
+      ),
+      status: _readableCatalogValue(product.status.databaseValue),
+      category: _readableCatalogValue(product.category.databaseValue),
+      dosageForm: _fallback(market?.dosageForm, 'Not recorded'),
+      strength: _fallback(market?.strength, 'Not recorded'),
+      route: _fallback(market?.route, 'Not recorded'),
+      packSize: _fallback(market?.packSize, 'Not recorded'),
+      composition: composition,
+      marketRows: marketRows,
+      clinicalRows: clinicalRows,
+      reviewRows: reviewRows,
+      metadataRows: metadataRows,
+    );
+  }
+
+  static String _fallback(String? value, String fallback) {
+    if (!_hasText(value)) {
+      return fallback;
+    }
+    return value!.trim();
+  }
+
+  static bool _hasText(String? value) =>
+      value != null && value.trim().isNotEmpty;
 }
 
 String _readableCatalogValue(String value) {
