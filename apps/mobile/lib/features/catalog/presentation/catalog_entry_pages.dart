@@ -9,6 +9,32 @@ const ProductListRequest _officialCatalogHomeRequest = ProductListRequest();
 String _officialProductDetailLocation(String productId) =>
     '/catalog/products/${Uri.encodeComponent(productId)}';
 
+String _readableCatalogValue(String value) {
+  return value
+      .split('_')
+      .where((String part) => part.isNotEmpty)
+      .map((String part) => '${part[0].toUpperCase()}${part.substring(1)}')
+      .join(' ');
+}
+
+String _formatShortDate(DateTime value) {
+  const List<String> months = <String>[
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+  return '${months[value.month - 1]} ${value.day}, ${value.year}';
+}
+
 class MobileOfficialCatalogEntryPage extends StatelessWidget {
   const MobileOfficialCatalogEntryPage({super.key});
 
@@ -18,13 +44,324 @@ class MobileOfficialCatalogEntryPage extends StatelessWidget {
   }
 }
 
-class MobileCompanyCatalogEntryPage extends StatelessWidget {
+class MobileCompanyCatalogEntryPage extends ConsumerWidget {
   const MobileCompanyCatalogEntryPage({super.key});
 
   @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final AsyncValue<List<ProductSummary>> products = ref.watch(
+      companyProductListProvider(null),
+    );
+
+    return Scaffold(
+      backgroundColor: _OfficialCatalogHome._background,
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (BuildContext context, BoxConstraints constraints) {
+            final double horizontalPadding = constraints.maxWidth < 380
+                ? PharmaConnectSpacing.medium
+                : PharmaConnectSpacing.large;
+            return SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(
+                horizontalPadding,
+                PharmaConnectSpacing.medium,
+                horizontalPadding,
+                40,
+              ),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 720),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      const _CompanyCatalogHeader(),
+                      const SizedBox(height: PharmaConnectSpacing.large),
+                      const _CompanyDraftActionCard(),
+                      const SizedBox(height: 24),
+                      const _SectionHeading(
+                        title: 'Company catalog workflow',
+                        trailing: 'Internal list',
+                      ),
+                      const SizedBox(height: 14),
+                      _CompanyProductWorkflowSection(products: products),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _CompanyCatalogHeader extends StatelessWidget {
+  const _CompanyCatalogHeader();
+
+  @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: Text('Company catalog workflow entry')),
+    return Row(
+      children: <Widget>[
+        Container(
+          width: 48,
+          height: 48,
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(
+              colors: <Color>[Color(0xFF119E98), Color(0xFF735EDB)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          child: const Icon(Icons.apartment_rounded, color: Colors.white),
+        ),
+        const SizedBox(width: 14),
+        const Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                'Company catalog',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.3,
+                ),
+              ),
+              SizedBox(height: 3),
+              Text(
+                'Manage official catalog workflow drafts',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: _OfficialCatalogHome._mutedText,
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CompanyDraftActionCard extends StatelessWidget {
+  const _CompanyDraftActionCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: _OfficialCatalogHome._surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+      ),
+      child: Row(
+        children: <Widget>[
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: const Color(0xFF35C9B7).withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(17),
+            ),
+            child: const Icon(
+              Icons.add_circle_outline_rounded,
+              color: Color(0xFF35C9B7),
+              size: 27,
+            ),
+          ),
+          const SizedBox(width: 15),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  'Create product draft',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                SizedBox(height: 5),
+                Text(
+                  'UI placeholder only. Draft creation comes in a later phase.',
+                  style: TextStyle(
+                    color: _OfficialCatalogHome._mutedText,
+                    fontSize: 12,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CompanyProductWorkflowSection extends StatelessWidget {
+  const _CompanyProductWorkflowSection({required this.products});
+
+  final AsyncValue<List<ProductSummary>> products;
+
+  @override
+  Widget build(BuildContext context) {
+    if (products.hasError) {
+      return const _CatalogStateCard(
+        icon: Icons.error_outline_rounded,
+        accent: Color(0xFFFF9B8D),
+        title: 'Company catalog could not load',
+        subtitle: 'Please try again or return later.',
+      );
+    }
+
+    if (products.isLoading) {
+      return const _CatalogStateCard(
+        icon: Icons.sync_rounded,
+        accent: Color(0xFF35C9B7),
+        title: 'Loading company catalog',
+        subtitle: 'Fetching workflow products for this session.',
+      );
+    }
+
+    final List<ProductSummary> productList = products.requireValue;
+    if (productList.isEmpty) {
+      return const _CatalogStateCard(
+        icon: Icons.inventory_2_outlined,
+        accent: Color(0xFF8C7CFF),
+        title: 'No company products yet',
+        subtitle: 'Drafts and submitted products will appear here.',
+      );
+    }
+
+    return Column(
+      children: <Widget>[
+        for (int index = 0; index < productList.length; index++)
+          Padding(
+            padding: EdgeInsets.only(top: index == 0 ? 0 : 14),
+            child: _CompanyProductWorkflowCard(product: productList[index]),
+          ),
+      ],
+    );
+  }
+}
+
+class _CompanyProductWorkflowCard extends StatelessWidget {
+  const _CompanyProductWorkflowCard({required this.product});
+
+  final ProductSummary product;
+
+  @override
+  Widget build(BuildContext context) {
+    final _ProductDisplayData data = _ProductDisplayData.fromProduct(product);
+    final String status = _readableCatalogValue(product.status.databaseValue);
+
+    return Container(
+      padding: const EdgeInsets.all(17),
+      decoration: BoxDecoration(
+        color: _OfficialCatalogHome._surfaceSoft,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Container(
+            width: 54,
+            height: 54,
+            decoration: BoxDecoration(
+              color: const Color(0xFF35C9B7).withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(17),
+            ),
+            child: const Icon(
+              Icons.inventory_2_outlined,
+              color: Color(0xFF35C9B7),
+              size: 25,
+            ),
+          ),
+          const SizedBox(width: 15),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: Text(
+                        data.brandName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    _WorkflowStatusPill(label: status),
+                  ],
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  data.genericName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: _OfficialCatalogHome._mutedText,
+                    fontSize: 12,
+                    height: 1.35,
+                  ),
+                ),
+                const SizedBox(height: 7),
+                Text(
+                  'Updated ${_formatShortDate(product.updatedAt)}',
+                  style: const TextStyle(
+                    color: Color(0xFFB8C4D3),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WorkflowStatusPill extends StatelessWidget {
+  const _WorkflowStatusPill({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFF8C7CFF).withValues(alpha: 0.16),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Color(0xFFC9C2FF),
+          fontSize: 10,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
     );
   }
 }
