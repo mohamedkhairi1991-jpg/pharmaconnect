@@ -590,9 +590,12 @@ class _ReviewLifecycleActions extends ConsumerWidget {
                             if (!context.mounted) {
                               return;
                             }
+                            Navigator.of(context).pop();
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                content: Text('Product published.'),
+                                content: Text(
+                                  'Product published and removed from the submitted review queue.',
+                                ),
                               ),
                             );
                           } catch (_) {
@@ -602,7 +605,7 @@ class _ReviewLifecycleActions extends ConsumerWidget {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text(
-                                  'Product could not be published.',
+                                  'Product could not be published. Please review the catalog data and try again.',
                                 ),
                               ),
                             );
@@ -628,9 +631,12 @@ class _ReviewLifecycleActions extends ConsumerWidget {
                             if (!context.mounted) {
                               return;
                             }
+                            Navigator.of(context).pop();
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                content: Text('Changes requested.'),
+                                content: Text(
+                                  'Changes requested and the item was removed from the submitted review queue.',
+                                ),
                               ),
                             );
                           } catch (_) {
@@ -640,7 +646,7 @@ class _ReviewLifecycleActions extends ConsumerWidget {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text(
-                                  'Changes could not be requested.',
+                                  'Changes could not be requested. Please review the reason and try again.',
                                 ),
                               ),
                             );
