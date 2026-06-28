@@ -35,6 +35,11 @@ String _formatShortDate(DateTime value) {
   return '${months[value.month - 1]} ${value.day}, ${value.year}';
 }
 
+String _formatDateInput(DateTime value) =>
+    '${value.year.toString().padLeft(4, '0')}-'
+    '${value.month.toString().padLeft(2, '0')}-'
+    '${value.day.toString().padLeft(2, '0')}';
+
 String _taxonomyName(
   LocalizedContent<TaxonomyTranslation> translations,
   String fallback,
@@ -716,15 +721,129 @@ class _CompanyProductDetailSheet extends ConsumerStatefulWidget {
 
 class _CompanyProductDetailSheetState
     extends ConsumerState<_CompanyProductDetailSheet> {
+  final TextEditingController _brandNameController = TextEditingController();
+  final TextEditingController _strengthController = TextEditingController();
+  final TextEditingController _dosageFormController = TextEditingController();
+  final TextEditingController _routeController = TextEditingController();
+  final TextEditingController _packSizeController = TextEditingController();
+  final TextEditingController _registrationNumberController =
+      TextEditingController();
+  final TextEditingController _registrationAuthorityController =
+      TextEditingController();
+  final TextEditingController _registrationExpiresOnController =
+      TextEditingController();
+  final TextEditingController _storageConditionsController =
+      TextEditingController();
+  final TextEditingController _approvedIndicationsController =
+      TextEditingController();
+  final TextEditingController _usualAdultDoseController =
+      TextEditingController();
+  final TextEditingController _contraindicationsController =
+      TextEditingController();
+  final TextEditingController _commonAdverseEffectsController =
+      TextEditingController();
+
+  String? _loadedProductId;
   ProductCategory? _category;
   String? _drugClassId;
+  String? _genericDrugId;
+  IraqMarketStatus? _marketStatus;
+  ProductRegistrationStatus? _registrationStatus;
+  Set<String> _specialtyIds = const <String>{};
   bool _isSaving = false;
   bool _isSubmitting = false;
+
+  @override
+  void dispose() {
+    _brandNameController.dispose();
+    _strengthController.dispose();
+    _dosageFormController.dispose();
+    _routeController.dispose();
+    _packSizeController.dispose();
+    _registrationNumberController.dispose();
+    _registrationAuthorityController.dispose();
+    _registrationExpiresOnController.dispose();
+    _storageConditionsController.dispose();
+    _approvedIndicationsController.dispose();
+    _usualAdultDoseController.dispose();
+    _contraindicationsController.dispose();
+    _commonAdverseEffectsController.dispose();
+    super.dispose();
+  }
+
+  void _hydrateProduct(ProductDetail product) {
+    if (_loadedProductId == product.id) {
+      return;
+    }
+    final ProductTranslation? translation = product.translations.resolve(
+      ContentLocale.english,
+    );
+    final ProductMarket? market = product.iraqMarket;
+    final ProductMarketTranslation? marketTranslation = market?.translations
+        .resolve(ContentLocale.english);
+
+    _loadedProductId = product.id;
+    _category = product.category;
+    _drugClassId = product.drugClass.id;
+    _genericDrugId = product.genericDrug?.id;
+    _marketStatus = market?.marketStatus ?? IraqMarketStatus.notMarketed;
+    _registrationStatus =
+        market?.registrationStatus ?? ProductRegistrationStatus.notRecorded;
+    _specialtyIds = product.specialties
+        .map((ProductSpecialty specialty) => specialty.id)
+        .toSet();
+
+    _brandNameController.text = translation?.brandName ?? '';
+    _strengthController.text = market?.strength ?? '';
+    _dosageFormController.text = market?.dosageForm ?? '';
+    _routeController.text = market?.route ?? '';
+    _packSizeController.text = market?.packSize ?? '';
+    _registrationNumberController.text = market?.registrationNumber ?? '';
+    _registrationAuthorityController.text = market?.registrationAuthority ?? '';
+    _registrationExpiresOnController.text =
+        market?.registrationExpiresOn == null
+        ? ''
+        : _formatDateInput(market!.registrationExpiresOn!);
+    _storageConditionsController.text =
+        marketTranslation?.storageConditions ?? '';
+    _approvedIndicationsController.text =
+        marketTranslation?.approvedIndications ?? '';
+    _usualAdultDoseController.text = marketTranslation?.usualAdultDose ?? '';
+    _contraindicationsController.text =
+        marketTranslation?.contraindications ?? '';
+    _commonAdverseEffectsController.text =
+        marketTranslation?.commonAdverseEffects ?? '';
+  }
+
+  DateTime? _registrationExpiryFromInput() {
+    final String raw = _registrationExpiresOnController.text.trim();
+    if (raw.isEmpty) {
+      return null;
+    }
+    return DateTime.tryParse(raw);
+  }
 
   Future<void> _save(ProductDetail product) async {
     final ProductCategory category = _category ?? product.category;
     final String drugClassId = _drugClassId ?? product.drugClass.id;
-    if (_isSaving) {
+    final String brandName = _brandNameController.text.trim();
+    final DateTime? registrationExpiresOn = _registrationExpiryFromInput();
+    if (_isSaving || !product.status.isCompanyEditable) {
+      return;
+    }
+    if (brandName.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('English brand name is required.')),
+      );
+      return;
+    }
+    if (_registrationExpiresOnController.text.trim().isNotEmpty &&
+        registrationExpiresOn == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Registration expiry must use YYYY-MM-DD format.'),
+        ),
+      );
       return;
     }
 
@@ -735,27 +854,75 @@ class _CompanyProductDetailSheetState
     try {
       await ref
           .read(companyCatalogMutationController.notifier)
+          .upsertTranslation(
+            productId: product.id,
+            locale: ContentLocale.english,
+            brandName: brandName,
+          );
+      await ref
+          .read(companyCatalogMutationController.notifier)
           .updateDraft(
             UpdateProductDraftCommand(
               productId: product.id,
               category: category,
               drugClassId: drugClassId,
-              genericDrugId: product.genericDrug?.id,
+              genericDrugId: _genericDrugId,
             ),
           );
+      await ref
+          .read(companyCatalogMutationController.notifier)
+          .upsertIraqMarket(
+            ProductMarketCommand(
+              productId: product.id,
+              strength: _strengthController.text.trim(),
+              dosageForm: _dosageFormController.text.trim(),
+              route: _routeController.text.trim(),
+              packSize: _packSizeController.text.trim(),
+              marketStatus: _marketStatus ?? IraqMarketStatus.notMarketed,
+              registrationStatus:
+                  _registrationStatus ?? ProductRegistrationStatus.notRecorded,
+              registrationNumber:
+                  _registrationNumberController.text.trim().isEmpty
+                  ? null
+                  : _registrationNumberController.text.trim(),
+              registrationAuthority:
+                  _registrationAuthorityController.text.trim().isEmpty
+                  ? null
+                  : _registrationAuthorityController.text.trim(),
+              registrationExpiresOn: registrationExpiresOn,
+            ),
+          );
+      await ref
+          .read(companyCatalogMutationController.notifier)
+          .upsertMarketTranslation(
+            ProductMarketTranslationCommand(
+              productId: product.id,
+              locale: ContentLocale.english,
+              storageConditions: _storageConditionsController.text.trim(),
+              approvedIndications: _approvedIndicationsController.text.trim(),
+              usualAdultDose: _usualAdultDoseController.text.trim(),
+              contraindications: _contraindicationsController.text.trim(),
+              commonAdverseEffects: _commonAdverseEffectsController.text.trim(),
+            ),
+          );
+      await ref
+          .read(companyCatalogMutationController.notifier)
+          .setSpecialties(product.id, _specialtyIds.toList(growable: false));
 
       if (!mounted) {
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Workflow product updated.')),
+        const SnackBar(content: Text('Product completion fields saved.')),
       );
     } catch (_) {
       if (!mounted) {
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Workflow product could not be updated.')),
+        const SnackBar(
+          content: Text('Product completion fields could not be saved.'),
+        ),
       );
     } finally {
       if (mounted) {
@@ -865,8 +1032,30 @@ class _CompanyProductDetailSheetState
                 else
                   _CompanyProductDetailContent(
                     detail: detail,
+                    onProductLoaded: _hydrateProduct,
+                    brandNameController: _brandNameController,
+                    strengthController: _strengthController,
+                    dosageFormController: _dosageFormController,
+                    routeController: _routeController,
+                    packSizeController: _packSizeController,
+                    registrationNumberController: _registrationNumberController,
+                    registrationAuthorityController:
+                        _registrationAuthorityController,
+                    registrationExpiresOnController:
+                        _registrationExpiresOnController,
+                    storageConditionsController: _storageConditionsController,
+                    approvedIndicationsController:
+                        _approvedIndicationsController,
+                    usualAdultDoseController: _usualAdultDoseController,
+                    contraindicationsController: _contraindicationsController,
+                    commonAdverseEffectsController:
+                        _commonAdverseEffectsController,
                     category: _category,
                     drugClassId: _drugClassId,
+                    genericDrugId: _genericDrugId,
+                    marketStatus: _marketStatus,
+                    registrationStatus: _registrationStatus,
+                    specialtyIds: _specialtyIds,
                     isSaving: _isSaving,
                     isSubmitting: _isSubmitting,
                     onCategoryChanged: (ProductCategory value) {
@@ -877,6 +1066,33 @@ class _CompanyProductDetailSheetState
                     onDrugClassChanged: (String value) {
                       setState(() {
                         _drugClassId = value;
+                      });
+                    },
+                    onGenericDrugChanged: (String? value) {
+                      setState(() {
+                        _genericDrugId = value;
+                      });
+                    },
+                    onMarketStatusChanged: (IraqMarketStatus value) {
+                      setState(() {
+                        _marketStatus = value;
+                      });
+                    },
+                    onRegistrationStatusChanged:
+                        (ProductRegistrationStatus value) {
+                          setState(() {
+                            _registrationStatus = value;
+                          });
+                        },
+                    onSpecialtyToggled: (String value, bool selected) {
+                      setState(() {
+                        final Set<String> next = Set<String>.of(_specialtyIds);
+                        if (selected) {
+                          next.add(value);
+                        } else {
+                          next.remove(value);
+                        }
+                        _specialtyIds = next;
                       });
                     },
                     onSave: _save,
@@ -894,23 +1110,67 @@ class _CompanyProductDetailSheetState
 class _CompanyProductDetailContent extends ConsumerWidget {
   const _CompanyProductDetailContent({
     required this.detail,
+    required this.onProductLoaded,
+    required this.brandNameController,
+    required this.strengthController,
+    required this.dosageFormController,
+    required this.routeController,
+    required this.packSizeController,
+    required this.registrationNumberController,
+    required this.registrationAuthorityController,
+    required this.registrationExpiresOnController,
+    required this.storageConditionsController,
+    required this.approvedIndicationsController,
+    required this.usualAdultDoseController,
+    required this.contraindicationsController,
+    required this.commonAdverseEffectsController,
     required this.category,
     required this.drugClassId,
+    required this.genericDrugId,
+    required this.marketStatus,
+    required this.registrationStatus,
+    required this.specialtyIds,
     required this.isSaving,
     required this.isSubmitting,
     required this.onCategoryChanged,
     required this.onDrugClassChanged,
+    required this.onGenericDrugChanged,
+    required this.onMarketStatusChanged,
+    required this.onRegistrationStatusChanged,
+    required this.onSpecialtyToggled,
     required this.onSave,
     required this.onSubmitForReview,
   });
 
   final AsyncValue<ProductDetail> detail;
+  final ValueChanged<ProductDetail> onProductLoaded;
+  final TextEditingController brandNameController;
+  final TextEditingController strengthController;
+  final TextEditingController dosageFormController;
+  final TextEditingController routeController;
+  final TextEditingController packSizeController;
+  final TextEditingController registrationNumberController;
+  final TextEditingController registrationAuthorityController;
+  final TextEditingController registrationExpiresOnController;
+  final TextEditingController storageConditionsController;
+  final TextEditingController approvedIndicationsController;
+  final TextEditingController usualAdultDoseController;
+  final TextEditingController contraindicationsController;
+  final TextEditingController commonAdverseEffectsController;
   final ProductCategory? category;
   final String? drugClassId;
+  final String? genericDrugId;
+  final IraqMarketStatus? marketStatus;
+  final ProductRegistrationStatus? registrationStatus;
+  final Set<String> specialtyIds;
   final bool isSaving;
   final bool isSubmitting;
   final ValueChanged<ProductCategory> onCategoryChanged;
   final ValueChanged<String> onDrugClassChanged;
+  final ValueChanged<String?> onGenericDrugChanged;
+  final ValueChanged<IraqMarketStatus> onMarketStatusChanged;
+  final ValueChanged<ProductRegistrationStatus> onRegistrationStatusChanged;
+  final void Function(String value, bool selected) onSpecialtyToggled;
   final Future<void> Function(ProductDetail product) onSave;
   final Future<void> Function(ProductDetail product) onSubmitForReview;
 
@@ -944,6 +1204,7 @@ class _CompanyProductDetailContent extends ConsumerWidget {
     }
 
     final ProductDetail product = detail.requireValue;
+    onProductLoaded(product);
     final _ProductDetailDisplayData data = _ProductDetailDisplayData.fromDetail(
       product,
     );
@@ -999,12 +1260,39 @@ class _CompanyProductDetailContent extends ConsumerWidget {
         if (isCompanyEditable)
           _DraftEditShell(
             product: product,
+            brandNameController: brandNameController,
+            strengthController: strengthController,
+            dosageFormController: dosageFormController,
+            routeController: routeController,
+            packSizeController: packSizeController,
+            registrationNumberController: registrationNumberController,
+            registrationAuthorityController: registrationAuthorityController,
+            registrationExpiresOnController: registrationExpiresOnController,
+            storageConditionsController: storageConditionsController,
+            approvedIndicationsController: approvedIndicationsController,
+            usualAdultDoseController: usualAdultDoseController,
+            contraindicationsController: contraindicationsController,
+            commonAdverseEffectsController: commonAdverseEffectsController,
             category: category ?? product.category,
             drugClassId: drugClassId ?? product.drugClass.id,
+            genericDrugId: genericDrugId,
+            marketStatus:
+                marketStatus ??
+                product.iraqMarket?.marketStatus ??
+                IraqMarketStatus.notMarketed,
+            registrationStatus:
+                registrationStatus ??
+                product.iraqMarket?.registrationStatus ??
+                ProductRegistrationStatus.notRecorded,
+            specialtyIds: specialtyIds,
             isSaving: isSaving,
             isSubmitting: isSubmitting,
             onCategoryChanged: onCategoryChanged,
             onDrugClassChanged: onDrugClassChanged,
+            onGenericDrugChanged: onGenericDrugChanged,
+            onMarketStatusChanged: onMarketStatusChanged,
+            onRegistrationStatusChanged: onRegistrationStatusChanged,
+            onSpecialtyToggled: onSpecialtyToggled,
             onSave: onSave,
             onSubmitForReview: onSubmitForReview,
           )
@@ -1024,23 +1312,65 @@ class _CompanyProductDetailContent extends ConsumerWidget {
 class _DraftEditShell extends ConsumerWidget {
   const _DraftEditShell({
     required this.product,
+    required this.brandNameController,
+    required this.strengthController,
+    required this.dosageFormController,
+    required this.routeController,
+    required this.packSizeController,
+    required this.registrationNumberController,
+    required this.registrationAuthorityController,
+    required this.registrationExpiresOnController,
+    required this.storageConditionsController,
+    required this.approvedIndicationsController,
+    required this.usualAdultDoseController,
+    required this.contraindicationsController,
+    required this.commonAdverseEffectsController,
     required this.category,
     required this.drugClassId,
+    required this.genericDrugId,
+    required this.marketStatus,
+    required this.registrationStatus,
+    required this.specialtyIds,
     required this.isSaving,
     required this.isSubmitting,
     required this.onCategoryChanged,
     required this.onDrugClassChanged,
+    required this.onGenericDrugChanged,
+    required this.onMarketStatusChanged,
+    required this.onRegistrationStatusChanged,
+    required this.onSpecialtyToggled,
     required this.onSave,
     required this.onSubmitForReview,
   });
 
   final ProductDetail product;
+  final TextEditingController brandNameController;
+  final TextEditingController strengthController;
+  final TextEditingController dosageFormController;
+  final TextEditingController routeController;
+  final TextEditingController packSizeController;
+  final TextEditingController registrationNumberController;
+  final TextEditingController registrationAuthorityController;
+  final TextEditingController registrationExpiresOnController;
+  final TextEditingController storageConditionsController;
+  final TextEditingController approvedIndicationsController;
+  final TextEditingController usualAdultDoseController;
+  final TextEditingController contraindicationsController;
+  final TextEditingController commonAdverseEffectsController;
   final ProductCategory category;
   final String drugClassId;
+  final String? genericDrugId;
+  final IraqMarketStatus marketStatus;
+  final ProductRegistrationStatus registrationStatus;
+  final Set<String> specialtyIds;
   final bool isSaving;
   final bool isSubmitting;
   final ValueChanged<ProductCategory> onCategoryChanged;
   final ValueChanged<String> onDrugClassChanged;
+  final ValueChanged<String?> onGenericDrugChanged;
+  final ValueChanged<IraqMarketStatus> onMarketStatusChanged;
+  final ValueChanged<ProductRegistrationStatus> onRegistrationStatusChanged;
+  final void Function(String value, bool selected) onSpecialtyToggled;
   final Future<void> Function(ProductDetail product) onSave;
   final Future<void> Function(ProductDetail product) onSubmitForReview;
 
@@ -1048,6 +1378,12 @@ class _DraftEditShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<List<DrugClass>> drugClasses = ref.watch(
       catalogDrugClassesProvider,
+    );
+    final AsyncValue<List<GenericDrug>> genericDrugs = ref.watch(
+      catalogGenericDrugsProvider,
+    );
+    final AsyncValue<List<ProductSpecialty>> specialties = ref.watch(
+      catalogSpecialtiesProvider,
     );
     final AsyncValue<CatalogReadinessResult> readiness = ref.watch(
       companyProductReadinessProvider(
@@ -1057,7 +1393,9 @@ class _DraftEditShell extends ConsumerWidget {
         ),
       ),
     );
-    if (drugClasses.isLoading) {
+    if (drugClasses.isLoading ||
+        genericDrugs.isLoading ||
+        specialties.isLoading) {
       return const _CatalogStateCard(
         icon: Icons.sync_rounded,
         accent: Color(0xFF35C9B7),
@@ -1065,7 +1403,7 @@ class _DraftEditShell extends ConsumerWidget {
         subtitle: 'Fetching taxonomy choices for this workflow product.',
       );
     }
-    if (drugClasses.hasError) {
+    if (drugClasses.hasError || genericDrugs.hasError || specialties.hasError) {
       return const _CatalogStateCard(
         icon: Icons.error_outline_rounded,
         accent: Color(0xFFFF9B8D),
@@ -1076,6 +1414,10 @@ class _DraftEditShell extends ConsumerWidget {
     }
 
     final List<DrugClass> classes = drugClasses.requireValue;
+    final List<GenericDrug> generics = genericDrugs.requireValue;
+    final List<ProductSpecialty> activeSpecialties = specialties.requireValue
+        .where((ProductSpecialty specialty) => specialty.isActive)
+        .toList(growable: false);
     if (classes.isEmpty) {
       return const _CatalogStateCard(
         icon: Icons.category_outlined,
@@ -1096,6 +1438,17 @@ class _DraftEditShell extends ConsumerWidget {
             'The current drug class is missing from provider-supplied taxonomy choices.',
       );
     }
+    final List<String> genericIds = <String>[
+      '',
+      ...generics.map((GenericDrug value) => value.id),
+    ];
+    final String selectedGenericId = genericDrugId ?? '';
+    final String safeGenericId = genericIds.contains(selectedGenericId)
+        ? selectedGenericId
+        : '';
+    final List<String> specialtyIdsList = activeSpecialties
+        .map((ProductSpecialty specialty) => specialty.id)
+        .toList(growable: false);
 
     return Container(
       width: double.infinity,
@@ -1109,38 +1462,262 @@ class _DraftEditShell extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           const _DetailSectionTitle(
-            title: 'Workflow edit shell',
+            title: 'Product completion',
             icon: Icons.edit_note_rounded,
           ),
-          const SizedBox(height: 14),
-          _DraftDropdown<ProductCategory>(
-            label: 'Product category',
-            value: category,
-            items: ProductCategory.values,
-            itemLabel: (ProductCategory value) =>
-                _readableCatalogValue(value.databaseValue),
-            onChanged: (ProductCategory? value) {
-              if (value != null) {
-                onCategoryChanged(value);
-              }
-            },
+          const SizedBox(height: 8),
+          const Text(
+            'Editable only for draft or changes-requested workflow products. Server validation remains authoritative.',
+            style: TextStyle(
+              color: _OfficialCatalogHome._mutedText,
+              fontSize: 12,
+              height: 1.35,
+            ),
           ),
           const SizedBox(height: 14),
-          _DraftDropdown<String>(
-            label: 'Drug class',
-            value: drugClassId,
-            items: classes.map((DrugClass value) => value.id).toList(),
-            itemLabel: (String value) {
-              final DrugClass drugClass = classes.firstWhere(
-                (DrugClass candidate) => candidate.id == value,
-              );
-              return _taxonomyName(drugClass.translations, drugClass.code);
-            },
-            onChanged: (String? value) {
-              if (value != null) {
-                onDrugClassChanged(value);
-              }
-            },
+          _CompletionSectionCard(
+            title: 'Basics',
+            icon: Icons.medication_liquid_outlined,
+            children: <Widget>[
+              _DraftTextField(
+                controller: brandNameController,
+                label: 'English brand name',
+                onChanged: (_) {},
+              ),
+              const SizedBox(height: 14),
+              _DraftDropdown<ProductCategory>(
+                label: 'Product category',
+                value: category,
+                items: ProductCategory.values,
+                itemLabel: (ProductCategory value) =>
+                    _readableCatalogValue(value.databaseValue),
+                onChanged: (ProductCategory? value) {
+                  if (value != null) {
+                    onCategoryChanged(value);
+                  }
+                },
+              ),
+              const SizedBox(height: 14),
+              _DraftDropdown<String>(
+                label: 'Drug class',
+                value: drugClassId,
+                items: classes.map((DrugClass value) => value.id).toList(),
+                itemLabel: (String value) {
+                  final DrugClass drugClass = classes.firstWhere(
+                    (DrugClass candidate) => candidate.id == value,
+                  );
+                  return _taxonomyName(drugClass.translations, drugClass.code);
+                },
+                onChanged: (String? value) {
+                  if (value != null) {
+                    onDrugClassChanged(value);
+                  }
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          _CompletionSectionCard(
+            title: 'Scientific and composition',
+            icon: Icons.science_outlined,
+            children: <Widget>[
+              _DraftDropdown<String>(
+                label: 'Generic/scientific product',
+                value: safeGenericId,
+                items: genericIds,
+                itemLabel: (String value) {
+                  if (value.isEmpty) {
+                    return category == ProductCategory.dietarySupplement
+                        ? 'No generic selected'
+                        : 'Select generic/scientific product';
+                  }
+                  final GenericDrug generic = generics.firstWhere(
+                    (GenericDrug candidate) => candidate.id == value,
+                  );
+                  return _taxonomyName(generic.translations, generic.code);
+                },
+                onChanged: (String? value) {
+                  onGenericDrugChanged(
+                    value == null || value.isEmpty ? null : value,
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
+              _CompositionPreview(
+                generic: safeGenericId.isEmpty
+                    ? null
+                    : generics.firstWhere(
+                        (GenericDrug value) => value.id == safeGenericId,
+                      ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          _CompletionSectionCard(
+            title: 'Iraq market metadata',
+            icon: Icons.public_rounded,
+            children: <Widget>[
+              _DraftTextField(
+                controller: strengthController,
+                label: 'Strength',
+                onChanged: (_) {},
+              ),
+              const SizedBox(height: 14),
+              _DraftTextField(
+                controller: dosageFormController,
+                label: 'Dosage form',
+                onChanged: (_) {},
+              ),
+              const SizedBox(height: 14),
+              _DraftTextField(
+                controller: routeController,
+                label: 'Route',
+                onChanged: (_) {},
+              ),
+              const SizedBox(height: 14),
+              _DraftTextField(
+                controller: packSizeController,
+                label: 'Package / presentation',
+                onChanged: (_) {},
+              ),
+              const SizedBox(height: 14),
+              _DraftDropdown<IraqMarketStatus>(
+                label: 'Iraq market status metadata',
+                value: marketStatus,
+                items: IraqMarketStatus.values,
+                itemLabel: (IraqMarketStatus value) =>
+                    _readableCatalogValue(value.databaseValue),
+                onChanged: (IraqMarketStatus? value) {
+                  if (value != null) {
+                    onMarketStatusChanged(value);
+                  }
+                },
+              ),
+              const SizedBox(height: 14),
+              _DraftDropdown<ProductRegistrationStatus>(
+                label: 'Registration status',
+                value: registrationStatus,
+                items: ProductRegistrationStatus.values,
+                itemLabel: (ProductRegistrationStatus value) =>
+                    _readableCatalogValue(value.databaseValue),
+                onChanged: (ProductRegistrationStatus? value) {
+                  if (value != null) {
+                    onRegistrationStatusChanged(value);
+                  }
+                },
+              ),
+              const SizedBox(height: 14),
+              _DraftTextField(
+                controller: registrationNumberController,
+                label: 'Registration number',
+                onChanged: (_) {},
+              ),
+              const SizedBox(height: 14),
+              _DraftTextField(
+                controller: registrationAuthorityController,
+                label: 'Registration authority',
+                onChanged: (_) {},
+              ),
+              const SizedBox(height: 14),
+              _DraftTextField(
+                controller: registrationExpiresOnController,
+                label: 'Registration expiry (YYYY-MM-DD)',
+                onChanged: (_) {},
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          _CompletionSectionCard(
+            title: 'Clinical/catalog text',
+            icon: Icons.fact_check_outlined,
+            children: <Widget>[
+              _CompletionTextArea(
+                controller: storageConditionsController,
+                label: 'Storage conditions',
+              ),
+              const SizedBox(height: 14),
+              _CompletionTextArea(
+                controller: approvedIndicationsController,
+                label: 'Approved indications',
+              ),
+              const SizedBox(height: 14),
+              _CompletionTextArea(
+                controller: usualAdultDoseController,
+                label: 'Usual adult dose',
+              ),
+              const SizedBox(height: 14),
+              _CompletionTextArea(
+                controller: contraindicationsController,
+                label: 'Contraindications',
+              ),
+              const SizedBox(height: 14),
+              _CompletionTextArea(
+                controller: commonAdverseEffectsController,
+                label: 'Warnings and adverse effects',
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          _CompletionSectionCard(
+            title: 'Specialties',
+            icon: Icons.local_hospital_outlined,
+            children: <Widget>[
+              if (activeSpecialties.isEmpty)
+                const Text(
+                  'No active specialties are available from taxonomy providers.',
+                  style: TextStyle(
+                    color: _OfficialCatalogHome._mutedText,
+                    fontSize: 12,
+                    height: 1.35,
+                  ),
+                )
+              else
+                _SpecialtyChoices(
+                  specialties: activeSpecialties,
+                  selectedIds: specialtyIds.intersection(
+                    specialtyIdsList.toSet(),
+                  ),
+                  onToggled: onSpecialtyToggled,
+                ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          _CompletionSectionCard(
+            title: 'Media and brochure metadata',
+            icon: Icons.perm_media_outlined,
+            children: <Widget>[
+              Text(
+                product.media.isEmpty
+                    ? 'No media metadata recorded.'
+                    : '${product.media.length} media metadata item(s) recorded.',
+                style: const TextStyle(
+                  color: _OfficialCatalogHome._mutedText,
+                  fontSize: 12,
+                  height: 1.35,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                product.brochures.isEmpty
+                    ? 'No brochure metadata recorded.'
+                    : '${product.brochures.length} brochure metadata item(s) recorded.',
+                style: const TextStyle(
+                  color: _OfficialCatalogHome._mutedText,
+                  fontSize: 12,
+                  height: 1.35,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Upload, download, and signed URL workflows are intentionally not part of this phase.',
+                style: TextStyle(
+                  color: Color(0xFF35C9B7),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  height: 1.35,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 18),
           SizedBox(
@@ -1171,6 +1748,164 @@ class _DraftEditShell extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _CompletionSectionCard extends StatelessWidget {
+  const _CompletionSectionCard({
+    required this.title,
+    required this.icon,
+    required this.children,
+  });
+
+  final String title;
+  final IconData icon;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _OfficialCatalogHome._surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          _DetailSectionTitle(title: title, icon: icon),
+          const SizedBox(height: 14),
+          ...children,
+        ],
+      ),
+    );
+  }
+}
+
+class _CompletionTextArea extends StatelessWidget {
+  const _CompletionTextArea({required this.controller, required this.label});
+
+  final TextEditingController controller;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      minLines: 2,
+      maxLines: 4,
+      cursorColor: const Color(0xFF35C9B7),
+      style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.35),
+      decoration: InputDecoration(
+        labelText: label,
+        alignLabelWithHint: true,
+        labelStyle: const TextStyle(color: _OfficialCatalogHome._mutedText),
+        filled: true,
+        fillColor: _OfficialCatalogHome._surfaceSoft,
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.06)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: const BorderSide(color: Color(0xFF35C9B7)),
+        ),
+      ),
+    );
+  }
+}
+
+class _CompositionPreview extends StatelessWidget {
+  const _CompositionPreview({required this.generic});
+
+  final GenericDrug? generic;
+
+  @override
+  Widget build(BuildContext context) {
+    final List<String> ingredients =
+        generic?.composition
+            .map(
+              (GenericCompositionEntry entry) => _taxonomyName(
+                entry.ingredient.translations,
+                entry.ingredient.code,
+              ),
+            )
+            .where(_hasCatalogText)
+            .toList(growable: false) ??
+        const <String>[];
+
+    if (generic == null) {
+      return const Text(
+        'Select a provider-supplied generic/scientific product to preview composition.',
+        style: TextStyle(
+          color: _OfficialCatalogHome._mutedText,
+          fontSize: 12,
+          height: 1.35,
+        ),
+      );
+    }
+
+    if (ingredients.isEmpty) {
+      return const Text(
+        'This generic/scientific product has no active composition recorded.',
+        style: TextStyle(
+          color: Color(0xFFFFC978),
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          height: 1.35,
+        ),
+      );
+    }
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: <Widget>[
+        for (final String ingredient in ingredients)
+          _DetailPill(label: ingredient),
+      ],
+    );
+  }
+}
+
+class _SpecialtyChoices extends StatelessWidget {
+  const _SpecialtyChoices({
+    required this.specialties,
+    required this.selectedIds,
+    required this.onToggled,
+  });
+
+  final List<ProductSpecialty> specialties;
+  final Set<String> selectedIds;
+  final void Function(String value, bool selected) onToggled;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: <Widget>[
+        for (final ProductSpecialty specialty in specialties)
+          FilterChip(
+            selected: selectedIds.contains(specialty.id),
+            label: Text(_taxonomyName(specialty.translations, specialty.code)),
+            onSelected: (bool value) => onToggled(specialty.id, value),
+            showCheckmark: false,
+            backgroundColor: _OfficialCatalogHome._surfaceSoft,
+            selectedColor: const Color(0xFF35C9B7).withValues(alpha: 0.20),
+            side: BorderSide(color: Colors.white.withValues(alpha: 0.07)),
+            labelStyle: TextStyle(
+              color: selectedIds.contains(specialty.id)
+                  ? const Color(0xFFBFFBF2)
+                  : _OfficialCatalogHome._mutedText,
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
+            ),
+          ),
+      ],
     );
   }
 }

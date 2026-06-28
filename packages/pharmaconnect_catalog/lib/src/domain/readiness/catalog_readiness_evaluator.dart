@@ -22,14 +22,21 @@ abstract final class CatalogReadinessEvaluator {
         issues.add(CatalogReadinessIssue.genericCompositionInvalid);
       }
     }
-    if (!product.translations.hasRequiredEnglish) {
+    final String? englishBrandName = product.translations.english?.brandName;
+    if (englishBrandName == null || englishBrandName.trim().isEmpty) {
       issues.add(CatalogReadinessIssue.englishProductTranslationMissing);
     }
     final market = product.iraqMarket;
     if (market == null) {
       issues.add(CatalogReadinessIssue.iraqMarketMissing);
     } else {
-      if (!market.translations.hasRequiredEnglish) {
+      final marketTranslation = market.translations.english;
+      if (marketTranslation == null ||
+          marketTranslation.storageConditions.trim().isEmpty ||
+          marketTranslation.approvedIndications.trim().isEmpty ||
+          marketTranslation.usualAdultDose.trim().isEmpty ||
+          marketTranslation.contraindications.trim().isEmpty ||
+          marketTranslation.commonAdverseEffects.trim().isEmpty) {
         issues.add(CatalogReadinessIssue.englishIraqContentMissing);
       }
       if (stage == CatalogReadinessStage.publication &&
