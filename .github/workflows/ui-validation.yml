@@ -40,8 +40,11 @@ jobs:
         id: ui-validation
         shell: bash
         run: |
-          set -o pipefail
-          bash tool/validate_ui_phase.sh 2>&1 | tee ui-validation.log
+          set -euo pipefail
+          {
+            bash tool/validate_ui_phase.sh --mode design-system
+            bash tool/validate_ui_phase.sh --mode auth-ui
+          } 2>&1 | tee ui-validation.log
 
       - name: Upload failure log
         if: failure()

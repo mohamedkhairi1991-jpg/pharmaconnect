@@ -53,6 +53,26 @@ DESIGN_SYSTEM_FILES=(
   "apps/admin/lib/app/admin_app.dart"
 )
 
+AUTH_UI_FILES=(
+  "apps/mobile/lib/features/authentication/presentation/auth_support.dart"
+  "apps/mobile/lib/features/authentication/presentation/sign_in_page.dart"
+  "apps/mobile/lib/features/authentication/presentation/sign_up_page.dart"
+  "apps/mobile/lib/features/authentication/presentation/forgot_password_page.dart"
+  "apps/mobile/lib/features/authentication/presentation/reset_password_page.dart"
+  "apps/mobile/lib/features/authentication/presentation/check_email_page.dart"
+  "apps/mobile/lib/features/authentication/presentation/session_pages.dart"
+  "apps/admin/lib/features/authentication/presentation/auth_support.dart"
+  "apps/admin/lib/features/authentication/presentation/sign_in_page.dart"
+  "apps/admin/lib/features/authentication/presentation/forgot_password_page.dart"
+  "apps/admin/lib/features/authentication/presentation/reset_password_page.dart"
+  "apps/admin/lib/features/authentication/presentation/session_pages.dart"
+  "apps/mobile/test/sign_in_page_test.dart"
+  "apps/admin/test/sign_in_page_test.dart"
+  "packages/pharmaconnect_l10n/lib/src/generated/app_localizations.dart"
+  "packages/pharmaconnect_l10n/lib/src/generated/app_localizations_en.dart"
+  "packages/pharmaconnect_l10n/lib/src/generated/app_localizations_ar.dart"
+)
+
 run_stage() {
   CURRENT_STAGE="$1"
   shift
@@ -77,6 +97,27 @@ if [[ "${MODE}" == "design-system" ]]; then
     flutter analyze --no-pub apps/mobile/lib/app/mobile_app.dart
   run_stage "Admin app entrypoint analysis" \
     flutter analyze --no-pub apps/admin/lib/app/admin_app.dart
+elif [[ "${MODE}" == "auth-ui" ]]; then
+  if ((${#FORMAT_PATHS[@]} == 0)); then
+    FORMAT_PATHS=("${AUTH_UI_FILES[@]}")
+  fi
+
+  run_stage "Authentication UI formatting verification" \
+    dart format --output=none --set-exit-if-changed "${FORMAT_PATHS[@]}"
+  run_stage "Mobile authentication analysis" \
+    flutter analyze --no-pub apps/mobile/lib/features/authentication
+  run_stage "Admin authentication analysis" \
+    flutter analyze --no-pub apps/admin/lib/features/authentication
+  run_stage "Localization analysis" \
+    dart analyze packages/pharmaconnect_l10n
+  run_stage "Mobile authentication presentation tests" \
+    flutter test --no-pub apps/mobile/test/sign_in_page_test.dart
+  run_stage "Admin authentication presentation tests" \
+    flutter test --no-pub apps/admin/test/sign_in_page_test.dart
+  run_stage "Mobile authentication routing tests" \
+    flutter test --no-pub apps/mobile/test/auth_routing_test.dart
+  run_stage "Admin authentication routing tests" \
+    flutter test --no-pub apps/admin/test/auth_routing_test.dart
 elif [[ "${MODE}" == "custom" ]]; then
   if (
     (${#FORMAT_PATHS[@]} == 0) &&
