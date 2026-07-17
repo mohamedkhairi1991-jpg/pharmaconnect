@@ -101,8 +101,14 @@ abstract class AppLocalizations {
   /// Application name
   ///
   /// In en, this message translates to:
-  /// **'PharmaConnect'**
+  /// **'Pharamty'**
   String get appName;
+
+  /// No description provided for @adminPortalLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Administration portal'**
+  String get adminPortalLabel;
 
   /// No description provided for @signInTitle.
   ///
@@ -233,7 +239,7 @@ abstract class AppLocalizations {
   /// No description provided for @accountUnavailableMessage.
   ///
   /// In en, this message translates to:
-  /// **'This account cannot currently access PharmaConnect.'**
+  /// **'This account cannot currently access Pharamty.'**
   String get accountUnavailableMessage;
 
   /// No description provided for @unauthorizedClientTitle.

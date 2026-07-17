@@ -1,9 +1,10 @@
 {
   "@@locale": "en",
-  "appName": "PharmaConnect",
+  "appName": "Pharamty",
   "@appName": {
     "description": "Application name"
   },
+  "adminPortalLabel": "Administration portal",
   "signInTitle": "Sign in",
   "signUpTitle": "Create account",
   "emailLabel": "Email",
@@ -25,7 +26,7 @@
   "pendingAccountTitle": "Account setup pending",
   "pendingAccountMessage": "Your account is authenticated but is not yet assigned to an approved platform role.",
   "accountUnavailableTitle": "Account unavailable",
-  "accountUnavailableMessage": "This account cannot currently access PharmaConnect.",
+  "accountUnavailableMessage": "This account cannot currently access Pharamty.",
   "unauthorizedClientTitle": "Use the correct application",
   "unauthorizedClientMessage": "This account is not authorized to use the administration portal.",
   "sessionLoadingMessage": "Restoring your session…",
