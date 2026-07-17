@@ -20,16 +20,10 @@ void main() {
     });
 
     test('configures core components from centralized tokens', () {
-      expect(
-        theme.appBarTheme.backgroundColor,
-        PharmaConnectColors.canvas,
-      );
+      expect(theme.appBarTheme.backgroundColor, PharmaConnectColors.canvas);
       expect(theme.cardTheme.color, PharmaConnectColors.surface);
       expect(theme.cardTheme.elevation, PharmaConnectElevation.base);
-      expect(
-        theme.inputDecorationTheme.fillColor,
-        PharmaConnectColors.surface,
-      );
+      expect(theme.inputDecorationTheme.fillColor, PharmaConnectColors.surface);
       expect(
         theme.dialogTheme.backgroundColor,
         PharmaConnectColors.elevatedSurface,
@@ -42,10 +36,7 @@ void main() {
         theme.snackBarTheme.backgroundColor,
         PharmaConnectColors.elevatedSurface,
       );
-      expect(
-        theme.progressIndicatorTheme.color,
-        PharmaConnectColors.linkFocus,
-      );
+      expect(theme.progressIndicatorTheme.color, PharmaConnectColors.linkFocus);
       expect(
         theme.navigationBarTheme.backgroundColor,
         PharmaConnectColors.surface,
@@ -114,10 +105,7 @@ void main() {
 
     test('important foreground pairs meet normal-text contrast', () {
       expect(
-        _contrast(
-          PharmaConnectColors.primaryText,
-          PharmaConnectColors.canvas,
-        ),
+        _contrast(PharmaConnectColors.primaryText, PharmaConnectColors.canvas),
         greaterThanOrEqualTo(4.5),
       );
       expect(
@@ -128,10 +116,7 @@ void main() {
         greaterThanOrEqualTo(4.5),
       );
       expect(
-        _contrast(
-          PharmaConnectColors.primaryText,
-          PharmaConnectColors.primary,
-        ),
+        _contrast(PharmaConnectColors.primaryText, PharmaConnectColors.primary),
         greaterThanOrEqualTo(4.5),
       );
       expect(

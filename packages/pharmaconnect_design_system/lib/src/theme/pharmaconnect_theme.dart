@@ -113,7 +113,8 @@ abstract final class PharmaConnectTheme {
       scrolledUnderElevation: PharmaConnectElevation.base,
       centerTitle: false,
       titleTextStyle: PharmaConnectTypography.sectionTitle,
-      toolbarHeight: PharmaConnectSpacing.xxxLarge + PharmaConnectSpacing.medium,
+      toolbarHeight:
+          PharmaConnectSpacing.xxxLarge + PharmaConnectSpacing.medium,
     );
   }
 
@@ -148,18 +149,18 @@ abstract final class PharmaConnectTheme {
         textStyle: const WidgetStatePropertyAll<TextStyle>(
           PharmaConnectTypography.label,
         ),
-        backgroundColor: WidgetStateProperty.resolveWith<Color>(
-          (Set<WidgetState> states) {
-            if (states.contains(WidgetState.disabled)) {
-              return PharmaConnectColors.disabledContainer;
-            }
-            if (states.contains(WidgetState.pressed) ||
-                states.contains(WidgetState.hovered)) {
-              return PharmaConnectColors.primaryHover;
-            }
-            return PharmaConnectColors.primary;
-          },
-        ),
+        backgroundColor: WidgetStateProperty.resolveWith<Color>((
+          Set<WidgetState> states,
+        ) {
+          if (states.contains(WidgetState.disabled)) {
+            return PharmaConnectColors.disabledContainer;
+          }
+          if (states.contains(WidgetState.pressed) ||
+              states.contains(WidgetState.hovered)) {
+            return PharmaConnectColors.primaryHover;
+          }
+          return PharmaConnectColors.primary;
+        }),
         foregroundColor: WidgetStateProperty.resolveWith<Color>(
           (Set<WidgetState> states) => states.contains(WidgetState.disabled)
               ? PharmaConnectColors.disabledText
@@ -210,26 +211,26 @@ abstract final class PharmaConnectTheme {
               ? PharmaConnectColors.elevatedSurface
               : PharmaConnectColors.transparent,
         ),
-        side: WidgetStateProperty.resolveWith<BorderSide>(
-          (Set<WidgetState> states) {
-            if (states.contains(WidgetState.disabled)) {
-              return const BorderSide(
-                color: PharmaConnectColors.subtleBorder,
-                width: PharmaConnectBorders.standard,
-              );
-            }
-            if (states.contains(WidgetState.focused)) {
-              return const BorderSide(
-                color: PharmaConnectColors.linkFocus,
-                width: PharmaConnectBorders.focus,
-              );
-            }
+        side: WidgetStateProperty.resolveWith<BorderSide>((
+          Set<WidgetState> states,
+        ) {
+          if (states.contains(WidgetState.disabled)) {
             return const BorderSide(
-              color: PharmaConnectColors.strongBorder,
+              color: PharmaConnectColors.subtleBorder,
               width: PharmaConnectBorders.standard,
             );
-          },
-        ),
+          }
+          if (states.contains(WidgetState.focused)) {
+            return const BorderSide(
+              color: PharmaConnectColors.linkFocus,
+              width: PharmaConnectBorders.focus,
+            );
+          }
+          return const BorderSide(
+            color: PharmaConnectColors.strongBorder,
+            width: PharmaConnectBorders.standard,
+          );
+        }),
         shape: WidgetStatePropertyAll<OutlinedBorder>(
           RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(PharmaConnectRadii.control),
@@ -409,17 +410,17 @@ abstract final class PharmaConnectTheme {
       checkColor: const WidgetStatePropertyAll<Color>(
         PharmaConnectColors.primaryText,
       ),
-      fillColor: WidgetStateProperty.resolveWith<Color>(
-        (Set<WidgetState> states) {
-          if (states.contains(WidgetState.disabled)) {
-            return PharmaConnectColors.disabledContainer;
-          }
-          if (states.contains(WidgetState.selected)) {
-            return PharmaConnectColors.primary;
-          }
-          return PharmaConnectColors.transparent;
-        },
-      ),
+      fillColor: WidgetStateProperty.resolveWith<Color>((
+        Set<WidgetState> states,
+      ) {
+        if (states.contains(WidgetState.disabled)) {
+          return PharmaConnectColors.disabledContainer;
+        }
+        if (states.contains(WidgetState.selected)) {
+          return PharmaConnectColors.primary;
+        }
+        return PharmaConnectColors.transparent;
+      }),
       side: const BorderSide(
         color: PharmaConnectColors.strongBorder,
         width: PharmaConnectBorders.standard,
@@ -434,43 +435,43 @@ abstract final class PharmaConnectTheme {
     return RadioThemeData(
       visualDensity: VisualDensity.standard,
       materialTapTargetSize: MaterialTapTargetSize.padded,
-      fillColor: WidgetStateProperty.resolveWith<Color>(
-        (Set<WidgetState> states) {
-          if (states.contains(WidgetState.disabled)) {
-            return PharmaConnectColors.disabledText;
-          }
-          if (states.contains(WidgetState.selected)) {
-            return PharmaConnectColors.linkFocus;
-          }
-          return PharmaConnectColors.strongBorder;
-        },
-      ),
+      fillColor: WidgetStateProperty.resolveWith<Color>((
+        Set<WidgetState> states,
+      ) {
+        if (states.contains(WidgetState.disabled)) {
+          return PharmaConnectColors.disabledText;
+        }
+        if (states.contains(WidgetState.selected)) {
+          return PharmaConnectColors.linkFocus;
+        }
+        return PharmaConnectColors.strongBorder;
+      }),
     );
   }
 
   static SwitchThemeData _switchTheme() {
     return SwitchThemeData(
       materialTapTargetSize: MaterialTapTargetSize.padded,
-      thumbColor: WidgetStateProperty.resolveWith<Color>(
-        (Set<WidgetState> states) {
-          if (states.contains(WidgetState.disabled)) {
-            return PharmaConnectColors.disabledText;
-          }
-          return states.contains(WidgetState.selected)
-              ? PharmaConnectColors.primaryText
-              : PharmaConnectColors.secondaryText;
-        },
-      ),
-      trackColor: WidgetStateProperty.resolveWith<Color>(
-        (Set<WidgetState> states) {
-          if (states.contains(WidgetState.disabled)) {
-            return PharmaConnectColors.disabledContainer;
-          }
-          return states.contains(WidgetState.selected)
-              ? PharmaConnectColors.primary
-              : PharmaConnectColors.elevatedSurface;
-        },
-      ),
+      thumbColor: WidgetStateProperty.resolveWith<Color>((
+        Set<WidgetState> states,
+      ) {
+        if (states.contains(WidgetState.disabled)) {
+          return PharmaConnectColors.disabledText;
+        }
+        return states.contains(WidgetState.selected)
+            ? PharmaConnectColors.primaryText
+            : PharmaConnectColors.secondaryText;
+      }),
+      trackColor: WidgetStateProperty.resolveWith<Color>((
+        Set<WidgetState> states,
+      ) {
+        if (states.contains(WidgetState.disabled)) {
+          return PharmaConnectColors.disabledContainer;
+        }
+        return states.contains(WidgetState.selected)
+            ? PharmaConnectColors.primary
+            : PharmaConnectColors.elevatedSurface;
+      }),
       trackOutlineColor: const WidgetStatePropertyAll<Color>(
         PharmaConnectColors.strongBorder,
       ),
