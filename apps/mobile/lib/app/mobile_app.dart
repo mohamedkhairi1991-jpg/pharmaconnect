@@ -16,7 +16,8 @@ class MobileApp extends ConsumerWidget {
       onGenerateTitle: (BuildContext context) =>
           AppLocalizations.of(context).appName,
       routerConfig: ref.watch(mobileRouterProvider),
-      theme: PharmaConnectTheme.light(),
+      theme: PharmaConnectTheme.dark(),
+      themeMode: ThemeMode.dark,
     );
   }
 }
