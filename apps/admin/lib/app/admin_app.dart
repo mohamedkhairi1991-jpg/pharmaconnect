@@ -16,7 +16,8 @@ class AdminApp extends ConsumerWidget {
       onGenerateTitle: (BuildContext context) =>
           AppLocalizations.of(context).appName,
       routerConfig: ref.watch(adminRouterProvider),
-      theme: PharmaConnectTheme.light(),
+      theme: PharmaConnectTheme.dark(),
+      themeMode: ThemeMode.dark,
     );
   }
 }
