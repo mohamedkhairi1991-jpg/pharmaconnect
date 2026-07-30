@@ -15,11 +15,12 @@ abstract final class CatalogReferenceIds {
 abstract final class CatalogQueryProjections {
   static const String professionalEligibility =
       'id,profile_id,profession_type,specialty_id,verification_status,'
-      'profiles!inner(status)';
+      'profiles!healthcare_professionals_profile_id_fkey!inner(status)';
 
   static const String companyAccess =
       'id,company_id,company_role,is_active,'
-      'companies!inner(company_name,status),profiles!inner(status)';
+      'companies!inner(company_name,status),'
+      'profiles!company_users_profile_id_fkey!inner(status)';
 
   static const String drugClass =
       'id,code,parent_drug_class_id,is_active,'
