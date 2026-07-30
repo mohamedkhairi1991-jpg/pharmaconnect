@@ -36,6 +36,71 @@ void main() {
     },
   );
 
+  test(
+    'professional access selects the owning profile relationship explicitly',
+    () async {
+      final _FakeCatalogDataSource source = _FakeCatalogDataSource()
+        ..singleResponses.add(<String, Object?>{
+          'id': 'professional-id',
+          'profile_id': 'profile-id',
+          'profession_type': 'physician',
+          'specialty_id': 'specialty-id',
+          'verification_status': 'approved',
+          'profiles': <String, Object?>{'status': 'active'},
+        });
+      final SupabaseCatalogAccessRepository repository =
+          SupabaseCatalogAccessRepository(source);
+
+      final HealthcareProfessionalEligibilitySummary? eligibility =
+          await repository.getHealthcareProfessionalEligibility();
+
+      expect(eligibility, isNotNull);
+      expect(
+        source.readRequests.single.projection,
+        contains(
+          'profiles!healthcare_professionals_profile_id_fkey!inner(status)',
+        ),
+      );
+      expect(
+        source.readRequests.single.projection,
+        isNot(contains('profiles!inner(status)')),
+      );
+    },
+  );
+
+  test(
+    'company access selects the member profile relationship explicitly',
+    () async {
+      final _FakeCatalogDataSource source = _FakeCatalogDataSource()
+        ..singleResponses.add(<String, Object?>{
+          'id': 'membership-id',
+          'company_id': 'company-id',
+          'company_role': 'company_admin',
+          'is_active': true,
+          'companies': <String, Object?>{
+            'company_name': 'Company',
+            'status': 'verified',
+          },
+          'profiles': <String, Object?>{'status': 'active'},
+        });
+      final SupabaseCatalogAccessRepository repository =
+          SupabaseCatalogAccessRepository(source);
+
+      final CatalogCompanyAccess? access = await repository
+          .getCurrentCompanyAccess();
+
+      expect(access, isNotNull);
+      expect(
+        source.readRequests.single.projection,
+        contains('profiles!company_users_profile_id_fkey!inner(status)'),
+      );
+      expect(
+        source.readRequests.single.projection,
+        isNot(contains('profiles!inner(status)')),
+      );
+    },
+  );
+
   test('company draft creation uses exact RPC and parameters', () async {
     final _FakeCatalogDataSource source = _FakeCatalogDataSource()
       ..rpcResponses.add(<String, Object?>{'id': 'product-id'})
