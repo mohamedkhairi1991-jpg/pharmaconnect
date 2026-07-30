@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:pharmaconnect_admin/features/authentication/application/auth_controller.dart';
 import 'package:pharmaconnect_admin/features/authentication/presentation/auth_support.dart';
 import 'package:pharmaconnect_backend/pharmaconnect_backend.dart';
+import 'package:pharmaconnect_design_system/pharmaconnect_design_system.dart';
 import 'package:pharmaconnect_l10n/pharmaconnect_l10n.dart';
 
 class AdminResetPasswordPage extends ConsumerStatefulWidget {
@@ -70,7 +71,7 @@ class _AdminResetPasswordPageState
               decoration: InputDecoration(labelText: l10n.passwordLabel),
               validator: (String? value) => adminValidatePassword(value, l10n),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: PharmaConnectSpacing.medium),
             TextFormField(
               key: const Key('adminResetConfirmPassword'),
               controller: _confirmController,
@@ -85,17 +86,20 @@ class _AdminResetPasswordPageState
               },
             ),
             if (_error != null) ...<Widget>[
-              const SizedBox(height: 16),
-              Text(
-                _error!,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              const SizedBox(height: PharmaConnectSpacing.medium),
+              AdminAuthMessageBanner(
+                message: _error!,
+                tone: AdminAuthMessageTone.error,
               ),
             ],
-            const SizedBox(height: 24),
+            const SizedBox(height: PharmaConnectSpacing.large),
             FilledButton(
               key: const Key('adminResetSubmit'),
               onPressed: _loading ? null : _submit,
-              child: Text(l10n.resetPasswordAction),
+              child: AdminAuthActionLabel(
+                loading: _loading,
+                label: l10n.resetPasswordAction,
+              ),
             ),
           ],
         ),

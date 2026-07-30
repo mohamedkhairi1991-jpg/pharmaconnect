@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pharmaconnect_admin/features/authentication/application/auth_controller.dart';
 import 'package:pharmaconnect_admin/features/authentication/presentation/auth_support.dart';
+import 'package:pharmaconnect_design_system/pharmaconnect_design_system.dart';
 import 'package:pharmaconnect_l10n/pharmaconnect_l10n.dart';
 
 class AdminForgotPasswordPage extends ConsumerStatefulWidget {
@@ -62,14 +63,20 @@ class _AdminForgotPasswordPageState
               validator: (String? value) => adminValidateEmail(value, l10n),
             ),
             if (_sent) ...<Widget>[
-              const SizedBox(height: 16),
-              Text(l10n.resetEmailSentMessage),
+              const SizedBox(height: PharmaConnectSpacing.medium),
+              AdminAuthMessageBanner(
+                message: l10n.resetEmailSentMessage,
+                tone: AdminAuthMessageTone.success,
+              ),
             ],
-            const SizedBox(height: 24),
+            const SizedBox(height: PharmaConnectSpacing.large),
             FilledButton(
               key: const Key('adminForgotSubmit'),
               onPressed: _loading ? null : _submit,
-              child: Text(l10n.sendResetLinkAction),
+              child: AdminAuthActionLabel(
+                loading: _loading,
+                label: l10n.sendResetLinkAction,
+              ),
             ),
             TextButton(
               onPressed: () => context.go('/auth/sign-in'),

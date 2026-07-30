@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-  [ValidateSet('design-system', 'custom')]
+  [ValidateSet('design-system', 'auth-ui', 'custom')]
   [string]$Mode = 'design-system',
   [string[]]$FormatPath = @(),
   [string[]]$AnalyzePath = @(),
@@ -26,6 +26,26 @@ $designSystemFiles = @(
   'packages/pharmaconnect_design_system/lib/src/typography/pharmaconnect_typography.dart',
   'apps/mobile/lib/app/mobile_app.dart',
   'apps/admin/lib/app/admin_app.dart'
+)
+
+$authUiFiles = @(
+  'apps/mobile/lib/features/authentication/presentation/auth_support.dart',
+  'apps/mobile/lib/features/authentication/presentation/sign_in_page.dart',
+  'apps/mobile/lib/features/authentication/presentation/sign_up_page.dart',
+  'apps/mobile/lib/features/authentication/presentation/forgot_password_page.dart',
+  'apps/mobile/lib/features/authentication/presentation/reset_password_page.dart',
+  'apps/mobile/lib/features/authentication/presentation/check_email_page.dart',
+  'apps/mobile/lib/features/authentication/presentation/session_pages.dart',
+  'apps/admin/lib/features/authentication/presentation/auth_support.dart',
+  'apps/admin/lib/features/authentication/presentation/sign_in_page.dart',
+  'apps/admin/lib/features/authentication/presentation/forgot_password_page.dart',
+  'apps/admin/lib/features/authentication/presentation/reset_password_page.dart',
+  'apps/admin/lib/features/authentication/presentation/session_pages.dart',
+  'apps/mobile/test/sign_in_page_test.dart',
+  'apps/admin/test/sign_in_page_test.dart',
+  'packages/pharmaconnect_l10n/lib/src/generated/app_localizations.dart',
+  'packages/pharmaconnect_l10n/lib/src/generated/app_localizations_en.dart',
+  'packages/pharmaconnect_l10n/lib/src/generated/app_localizations_ar.dart'
 )
 
 function Invoke-ValidationStage {
@@ -68,6 +88,35 @@ if ($Mode -eq 'design-system') {
   }
   Invoke-ValidationStage 'Admin app entrypoint analysis' {
     flutter analyze --no-pub apps/admin/lib/app/admin_app.dart
+  }
+} elseif ($Mode -eq 'auth-ui') {
+  if ($FormatPath.Count -eq 0) {
+    $FormatPath = $authUiFiles
+  }
+
+  Invoke-ValidationStage 'Authentication UI formatting verification' {
+    dart format --output=none --set-exit-if-changed @FormatPath
+  }
+  Invoke-ValidationStage 'Mobile authentication analysis' {
+    flutter analyze --no-pub apps/mobile/lib/features/authentication
+  }
+  Invoke-ValidationStage 'Admin authentication analysis' {
+    flutter analyze --no-pub apps/admin/lib/features/authentication
+  }
+  Invoke-ValidationStage 'Localization analysis' {
+    dart analyze packages/pharmaconnect_l10n
+  }
+  Invoke-ValidationStage 'Mobile authentication presentation tests' {
+    flutter test --no-pub apps/mobile/test/sign_in_page_test.dart
+  }
+  Invoke-ValidationStage 'Admin authentication presentation tests' {
+    flutter test --no-pub apps/admin/test/sign_in_page_test.dart
+  }
+  Invoke-ValidationStage 'Mobile authentication routing tests' {
+    flutter test --no-pub apps/mobile/test/auth_routing_test.dart
+  }
+  Invoke-ValidationStage 'Admin authentication routing tests' {
+    flutter test --no-pub apps/admin/test/auth_routing_test.dart
   }
 } else {
   if (

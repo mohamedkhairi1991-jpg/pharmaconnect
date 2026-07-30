@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pharmaconnect_backend/pharmaconnect_backend.dart';
+import 'package:pharmaconnect_design_system/pharmaconnect_design_system.dart';
 import 'package:pharmaconnect_l10n/pharmaconnect_l10n.dart';
 import 'package:pharmaconnect_mobile/features/authentication/application/auth_controller.dart';
 import 'package:pharmaconnect_mobile/features/authentication/presentation/auth_support.dart';
@@ -21,6 +22,7 @@ class _MobileCheckEmailPageState extends ConsumerState<MobileCheckEmailPage> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   bool _loading = false;
   String? _message;
+  bool _messageIsError = false;
 
   @override
   void initState() {
@@ -40,14 +42,25 @@ class _MobileCheckEmailPageState extends ConsumerState<MobileCheckEmailPage> {
     setState(() {
       _loading = true;
       _message = null;
+      _messageIsError = false;
     });
     try {
       await ref
           .read(mobileAuthControllerProvider)
           .resendConfirmation(_emailController.text);
-      if (mounted) setState(() => _message = l10n.confirmationSentMessage);
+      if (mounted) {
+        setState(() {
+          _message = l10n.confirmationSentMessage;
+          _messageIsError = false;
+        });
+      }
     } on AuthFailure catch (failure) {
-      if (mounted) setState(() => _message = authFailureMessage(l10n, failure));
+      if (mounted) {
+        setState(() {
+          _message = authFailureMessage(l10n, failure);
+          _messageIsError = true;
+        });
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -64,7 +77,7 @@ class _MobileCheckEmailPageState extends ConsumerState<MobileCheckEmailPage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
             Text(l10n.checkEmailMessage),
-            const SizedBox(height: 16),
+            const SizedBox(height: PharmaConnectSpacing.medium),
             TextFormField(
               key: const Key('mobileConfirmationEmail'),
               controller: _emailController,
@@ -73,14 +86,22 @@ class _MobileCheckEmailPageState extends ConsumerState<MobileCheckEmailPage> {
               validator: (String? value) => validateEmail(value, l10n),
             ),
             if (_message != null) ...<Widget>[
-              const SizedBox(height: 16),
-              Text(_message!),
+              const SizedBox(height: PharmaConnectSpacing.medium),
+              AuthMessageBanner(
+                message: _message!,
+                tone: _messageIsError
+                    ? AuthMessageTone.error
+                    : AuthMessageTone.success,
+              ),
             ],
-            const SizedBox(height: 24),
+            const SizedBox(height: PharmaConnectSpacing.large),
             FilledButton(
               key: const Key('mobileResendConfirmation'),
               onPressed: _loading ? null : _resend,
-              child: Text(l10n.resendConfirmationAction),
+              child: AuthActionLabel(
+                loading: _loading,
+                label: l10n.resendConfirmationAction,
+              ),
             ),
             TextButton(
               onPressed: () => context.go('/auth/sign-in'),

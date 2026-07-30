@@ -9,7 +9,10 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
-  String get appName => 'PharmaConnect';
+  String get appName => 'Pharamty';
+
+  @override
+  String get adminPortalLabel => 'Administration portal';
 
   @override
   String get signInTitle => 'Sign in';
@@ -81,7 +84,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get accountUnavailableMessage =>
-      'This account cannot currently access PharmaConnect.';
+      'This account cannot currently access Pharamty.';
 
   @override
   String get unauthorizedClientTitle => 'Use the correct application';

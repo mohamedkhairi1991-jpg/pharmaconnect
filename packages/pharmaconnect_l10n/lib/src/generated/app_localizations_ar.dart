@@ -9,7 +9,10 @@ class AppLocalizationsAr extends AppLocalizations {
   AppLocalizationsAr([String locale = 'ar']) : super(locale);
 
   @override
-  String get appName => 'فارما كونيكت';
+  String get appName => 'Pharamty';
+
+  @override
+  String get adminPortalLabel => 'بوابة الإدارة';
 
   @override
   String get signInTitle => 'تسجيل الدخول';
@@ -80,7 +83,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get accountUnavailableMessage =>
-      'لا يمكن لهذا الحساب الوصول إلى فارما كونيكت حالياً.';
+      'لا يمكن لهذا الحساب الوصول إلى Pharamty حالياً.';
 
   @override
   String get unauthorizedClientTitle => 'استخدم التطبيق الصحيح';

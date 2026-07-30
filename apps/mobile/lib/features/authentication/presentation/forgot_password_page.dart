@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pharmaconnect_design_system/pharmaconnect_design_system.dart';
 import 'package:pharmaconnect_l10n/pharmaconnect_l10n.dart';
 import 'package:pharmaconnect_mobile/features/authentication/application/auth_controller.dart';
 import 'package:pharmaconnect_mobile/features/authentication/presentation/auth_support.dart';
@@ -63,14 +64,20 @@ class _MobileForgotPasswordPageState
               validator: (String? value) => validateEmail(value, l10n),
             ),
             if (_sent) ...<Widget>[
-              const SizedBox(height: 16),
-              Text(l10n.resetEmailSentMessage),
+              const SizedBox(height: PharmaConnectSpacing.medium),
+              AuthMessageBanner(
+                message: l10n.resetEmailSentMessage,
+                tone: AuthMessageTone.success,
+              ),
             ],
-            const SizedBox(height: 24),
+            const SizedBox(height: PharmaConnectSpacing.large),
             FilledButton(
               key: const Key('mobileForgotSubmit'),
               onPressed: _loading ? null : _submit,
-              child: Text(l10n.sendResetLinkAction),
+              child: AuthActionLabel(
+                loading: _loading,
+                label: l10n.sendResetLinkAction,
+              ),
             ),
             TextButton(
               onPressed: () => context.go('/auth/sign-in'),
