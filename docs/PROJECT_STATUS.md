@@ -1,6 +1,6 @@
 # PharmaConnect / Pharamty Project Status
 
-Last canonical update: Phase 6D.3A3
+Last canonical update: Phase 6D.3A4
 
 ## Identity and environment
 
@@ -10,8 +10,8 @@ Last canonical update: Phase 6D.3A3
 | Technical/internal name | PharmaConnect |
 | Backend demo project | PharmaConnect Demo |
 | Supabase project reference | `oymnmcqzxmnshsknrgam` |
-| Current branch | `feature/pharamty-auth-ui` |
-| Current phase | Phase 6D.3A3 Pharamty authentication and shared states |
+| Current branch | `feature/pharamty-doctor-catalog-ui` |
+| Current phase | Phase 6D.3A4 Pharamty doctor catalog UI |
 | Merge status | No merge approved |
 
 Technical identifiers remain PharmaConnect unless a dedicated rename phase is
@@ -33,20 +33,21 @@ doctor, company, patient, credential, or commercial information.
 
 ## Active UI work
 
-Phase 6D.3A2 is merged and verified. Phase 6D.3A3 applies the shared Pharamty
-visual identity to mobile and admin authentication, loading, pending,
-unavailable, unauthorized, and error states while preserving routing and
-authentication behavior.
+Phase 6D.3A2 and Phase 6D.3A3 are merged and verified. Phase 6D.3A4 applies
+the shared Pharamty visual identity to the approved-doctor catalog home,
+published product search and results, product details, provider states, and
+responsive mobile/web layouts while preserving catalog access and data
+behavior.
 
-Phase 6D.3A3 remains open until its scoped GitHub Actions validation and
-separate diff review are complete. The local machine is not the primary
-validation environment because repeated Dart and Flutter commands have timed
-out without diagnostics.
+Phase 6D.3A4 remains open until its scoped GitHub Actions validation, preview,
+and separate diff review are complete. The scoped local formatter, analyzer,
+catalog widget tests, and mobile access-routing tests pass; GitHub Actions
+remains the authoritative cloud validation environment.
 
 Docker is not required for ordinary UI work. Normal UI validation must not run
 Supabase, migrations, seeds, or database services.
 
-The next planned feature phase will be selected after Phase 6D.3A3 closes.
+The next planned feature phase will be selected after Phase 6D.3A4 closes.
 
 ## Compact checklist
 
@@ -57,9 +58,11 @@ The next planned feature phase will be selected after Phase 6D.3A3 closes.
 | Mobile and admin web scaffolds | Verified |
 | Phase 6D.3A2 design foundation implementation | Verified |
 | Phase 6D.3A2 GitHub Actions validation | Verified |
-| Pharamty authentication and shared states | In progress |
-| Phase 6D.3A3 GitHub Actions validation | In progress |
-| Local Flutter validation | Blocked |
+| Pharamty authentication and shared states | Verified |
+| Phase 6D.3A3 GitHub Actions validation | Verified |
+| Pharamty doctor catalog UI | In progress |
+| Phase 6D.3A4 GitHub Actions validation | In progress |
+| Scoped local Flutter validation | Verified |
 | Pull Request merge | Blocked — user approval required |
 
 Status vocabulary: **Not started**, **In progress**, **Verified**, **Blocked**.
