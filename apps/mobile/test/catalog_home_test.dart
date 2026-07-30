@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pharmaconnect_catalog/pharmaconnect_catalog.dart';
+import 'package:pharmaconnect_design_system/pharmaconnect_design_system.dart';
 import 'package:pharmaconnect_mobile/features/catalog/presentation/catalog_entry_pages.dart';
 
 void main() {
@@ -79,6 +80,36 @@ void main() {
 
     expect(find.text('AeroCure'), findsOneWidget);
     expect(find.text('CardioZen'), findsOneWidget);
+  });
+
+  testWidgets('catalog uses a single-column result list on a phone', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await _pumpCatalogHomeWithSearchProducts(tester);
+
+    expect(find.byKey(const Key('doctor-catalog-list')), findsOneWidget);
+    expect(find.byKey(const Key('doctor-catalog-grid')), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('catalog uses a two-column result grid on the web', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1200, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await _pumpCatalogHomeWithSearchProducts(tester);
+
+    expect(find.byKey(const Key('doctor-catalog-grid')), findsOneWidget);
+    expect(find.byKey(const Key('doctor-catalog-list')), findsNothing);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('local search filters by brand name', (
@@ -187,7 +218,10 @@ Future<void> _pumpCatalogHome(
         ),
         officialCatalogRepositoryProvider.overrideWithValue(repository),
       ],
-      child: const MaterialApp(home: MobileOfficialCatalogEntryPage()),
+      child: MaterialApp(
+        theme: PharmaConnectTheme.dark(),
+        home: const MobileOfficialCatalogEntryPage(),
+      ),
     ),
   );
   await tester.pump();

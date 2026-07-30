@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pharmaconnect_catalog/pharmaconnect_catalog.dart';
+import 'package:pharmaconnect_design_system/pharmaconnect_design_system.dart';
 import 'package:pharmaconnect_mobile/features/catalog/presentation/catalog_entry_pages.dart';
 
 void main() {
@@ -20,11 +21,16 @@ void main() {
             detail: _productDetail(),
           ),
         ),
-        child: MaterialApp.router(routerConfig: _testRouter()),
+        child: MaterialApp.router(
+          theme: PharmaConnectTheme.dark(),
+          routerConfig: _testRouter(),
+        ),
       ),
     );
     await tester.pumpAndSettle();
 
+    await tester.ensureVisible(find.text('AeroCure'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('AeroCure'));
     await tester.pumpAndSettle();
 
@@ -90,6 +96,25 @@ void main() {
     expect(find.text('Product basics'), findsOneWidget);
   });
 
+  testWidgets('product detail uses responsive web sections', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1200, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await _pumpDetail(
+      tester,
+      repository: _FakeOfficialCatalogRepository(detail: _productDetail()),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('doctor-product-detail-grid')), findsOneWidget);
+    expect(find.byKey(const Key('doctor-product-detail-list')), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('product detail avoids prohibited commercial wording', (
     WidgetTester tester,
   ) async {
@@ -141,6 +166,7 @@ Future<void> _pumpDetail(
     ProviderScope(
       overrides: _providerOverrides(repository: repository),
       child: MaterialApp(
+        theme: PharmaConnectTheme.dark(),
         home: MobileOfficialCatalogProductDetailPage(productId: productId),
       ),
     ),
