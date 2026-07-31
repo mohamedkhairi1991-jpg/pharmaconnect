@@ -1,6 +1,6 @@
 # PharmaConnect / Pharamty Project Status
 
-Last canonical update: Phase 6D.3A4
+Last canonical update: Phase 6D.3A5
 
 ## Identity and environment
 
@@ -10,8 +10,8 @@ Last canonical update: Phase 6D.3A4
 | Technical/internal name | PharmaConnect |
 | Backend demo project | PharmaConnect Demo |
 | Supabase project reference | `oymnmcqzxmnshsknrgam` |
-| Current branch | `feature/pharamty-doctor-catalog-ui` |
-| Current phase | Phase 6D.3A4 Pharamty doctor catalog UI |
+| Current branch | `feature/pharamty-company-catalog-ui` |
+| Current phase | Phase 6D.3A5 Pharamty company catalog UI |
 | Merge status | No merge approved |
 
 Technical identifiers remain PharmaConnect unless a dedicated rename phase is
@@ -33,21 +33,21 @@ doctor, company, patient, credential, or commercial information.
 
 ## Active UI work
 
-Phase 6D.3A2 and Phase 6D.3A3 are merged and verified. Phase 6D.3A4 applies
-the shared Pharamty visual identity to the approved-doctor catalog home,
-published product search and results, product details, provider states, and
-responsive mobile/web layouts while preserving catalog access and data
-behavior.
+Phase 6D.3A2 through Phase 6D.3A4 are merged and verified. Phase 6D.3A5 applies
+the shared Pharamty visual identity to the company catalog home, product
+workflow cards, create/edit surfaces, lifecycle states, completion indicators,
+and responsive mobile/web layouts while preserving company access, mutation,
+readiness, and publication-separation behavior.
 
-Phase 6D.3A4 remains open until its scoped GitHub Actions validation, preview,
-and separate diff review are complete. The scoped local formatter, analyzer,
-catalog widget tests, and mobile access-routing tests pass; GitHub Actions
-remains the authoritative cloud validation environment.
+Phase 6D.3A5 remains open until scoped validation, preview, GitHub Actions, and
+the separate diff review are complete. GitHub Actions remains the authoritative
+cloud validation environment. The scoped local formatter, analyzer, company
+catalog widget tests, mobile access-routing tests, and whitespace checks pass.
 
 Docker is not required for ordinary UI work. Normal UI validation must not run
 Supabase, migrations, seeds, or database services.
 
-The next planned feature phase will be selected after Phase 6D.3A4 closes.
+The next planned feature phase will be selected after Phase 6D.3A5 closes.
 
 ## Compact checklist
 
@@ -60,8 +60,10 @@ The next planned feature phase will be selected after Phase 6D.3A4 closes.
 | Phase 6D.3A2 GitHub Actions validation | Verified |
 | Pharamty authentication and shared states | Verified |
 | Phase 6D.3A3 GitHub Actions validation | Verified |
-| Pharamty doctor catalog UI | In progress |
-| Phase 6D.3A4 GitHub Actions validation | In progress |
+| Pharamty doctor catalog UI | Verified |
+| Phase 6D.3A4 GitHub Actions validation | Verified |
+| Pharamty company catalog UI | In progress |
+| Phase 6D.3A5 GitHub Actions validation | In progress |
 | Scoped local Flutter validation | Verified |
 | Pull Request merge | Blocked — user approval required |
 

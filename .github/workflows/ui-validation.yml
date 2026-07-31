@@ -45,6 +45,7 @@ jobs:
             bash tool/validate_ui_phase.sh --mode design-system
             bash tool/validate_ui_phase.sh --mode auth-ui
             bash tool/validate_ui_phase.sh --mode doctor-catalog-ui
+            bash tool/validate_ui_phase.sh --mode company-catalog-ui
           } 2>&1 | tee ui-validation.log
 
       - name: Upload failure log

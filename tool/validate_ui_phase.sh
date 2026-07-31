@@ -82,6 +82,12 @@ DOCTOR_CATALOG_UI_FILES=(
   "apps/mobile/test/auth_routing_test.dart"
 )
 
+COMPANY_CATALOG_UI_FILES=(
+  "apps/mobile/lib/features/catalog/presentation/catalog_entry_pages.dart"
+  "apps/mobile/test/company_catalog_test.dart"
+  "apps/mobile/test/auth_routing_test.dart"
+)
+
 run_stage() {
   CURRENT_STAGE="$1"
   shift
@@ -143,6 +149,20 @@ elif [[ "${MODE}" == "doctor-catalog-ui" ]]; then
   run_stage "Doctor catalog detail tests" \
     flutter test --no-pub apps/mobile/test/catalog_product_detail_test.dart
   run_stage "Mobile catalog access routing tests" \
+    flutter test --no-pub apps/mobile/test/auth_routing_test.dart
+elif [[ "${MODE}" == "company-catalog-ui" ]]; then
+  if ((${#FORMAT_PATHS[@]} == 0)); then
+    FORMAT_PATHS=("${COMPANY_CATALOG_UI_FILES[@]}")
+  fi
+
+  run_stage "Company catalog UI formatting verification" \
+    dart format --output=none --set-exit-if-changed "${FORMAT_PATHS[@]}"
+  run_stage "Company catalog presentation analysis" \
+    flutter analyze --no-pub \
+      apps/mobile/lib/features/catalog/presentation/catalog_entry_pages.dart
+  run_stage "Company catalog widget tests" \
+    flutter test --no-pub apps/mobile/test/company_catalog_test.dart
+  run_stage "Mobile company catalog access routing tests" \
     flutter test --no-pub apps/mobile/test/auth_routing_test.dart
 elif [[ "${MODE}" == "custom" ]]; then
   if (

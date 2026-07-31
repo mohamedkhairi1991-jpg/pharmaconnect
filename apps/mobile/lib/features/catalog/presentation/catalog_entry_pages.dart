@@ -7,6 +7,7 @@ import 'package:pharmaconnect_design_system/pharmaconnect_design_system.dart';
 import 'doctor_catalog_pages.dart';
 
 const ProductListRequest _officialCatalogHomeRequest = ProductListRequest();
+const double _wideCompanyCatalogBreakpoint = 760;
 
 String _officialProductDetailLocation(String productId) =>
     '/catalog/products/${Uri.encodeComponent(productId)}';
@@ -74,36 +75,45 @@ class MobileCompanyCatalogEntryPage extends ConsumerWidget {
     );
 
     return Scaffold(
-      backgroundColor: _OfficialCatalogHome._background,
+      backgroundColor: PharmaConnectColors.canvas,
       body: SafeArea(
         child: LayoutBuilder(
           builder: (BuildContext context, BoxConstraints constraints) {
+            final bool isWide =
+                constraints.maxWidth >= _wideCompanyCatalogBreakpoint;
             final double horizontalPadding = constraints.maxWidth < 380
                 ? PharmaConnectSpacing.medium
+                : isWide
+                ? PharmaConnectSpacing.xLarge
                 : PharmaConnectSpacing.large;
             return SingleChildScrollView(
               padding: EdgeInsets.fromLTRB(
                 horizontalPadding,
-                PharmaConnectSpacing.medium,
+                PharmaConnectSpacing.large,
                 horizontalPadding,
-                40,
+                PharmaConnectSpacing.xxLarge,
               ),
               child: Center(
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 720),
+                  constraints: const BoxConstraints(maxWidth: 1120),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      const _CompanyCatalogHeader(),
+                      _CompanyCatalogHeader(isWide: isWide),
                       const SizedBox(height: PharmaConnectSpacing.large),
-                      const _CompanyDraftActionCard(),
-                      const SizedBox(height: 24),
-                      const _SectionHeading(
-                        title: 'Company catalog workflow',
-                        trailing: 'Internal list',
+                      _CompanyWorkflowOverview(
+                        products: products,
+                        isWide: isWide,
                       ),
-                      const SizedBox(height: 14),
-                      _CompanyProductWorkflowSection(products: products),
+                      const SizedBox(height: PharmaConnectSpacing.xLarge),
+                      _CompanyWorkflowHeading(products: products),
+                      const SizedBox(height: PharmaConnectSpacing.medium),
+                      _CompanyProductWorkflowSection(
+                        products: products,
+                        isWide: isWide,
+                        onRetry: () =>
+                            ref.invalidate(companyProductListProvider(null)),
+                      ),
                     ],
                   ),
                 ),
@@ -117,52 +127,84 @@ class MobileCompanyCatalogEntryPage extends ConsumerWidget {
 }
 
 class _CompanyCatalogHeader extends StatelessWidget {
-  const _CompanyCatalogHeader();
+  const _CompanyCatalogHeader({required this.isWide});
+
+  final bool isWide;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: <Widget>[
         Container(
-          width: 48,
-          height: 48,
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: LinearGradient(
-              colors: <Color>[Color(0xFF119E98), Color(0xFF735EDB)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+          width: PharmaConnectSpacing.xxxLarge,
+          height: PharmaConnectSpacing.xxxLarge,
+          decoration: BoxDecoration(
+            color: PharmaConnectColors.primary,
+            borderRadius: BorderRadius.circular(PharmaConnectRadii.card),
+            border: Border.all(
+              color: PharmaConnectColors.linkFocus.withValues(alpha: 0.5),
             ),
           ),
-          child: const Icon(Icons.apartment_rounded, color: Colors.white),
+          child: const Icon(
+            Icons.health_and_safety_outlined,
+            color: PharmaConnectColors.primaryText,
+          ),
         ),
-        const SizedBox(width: 14),
-        const Expanded(
+        const SizedBox(width: PharmaConnectSpacing.compact),
+        Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Text(
-                'Company catalog',
+                'Pharamty',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -0.3,
-                ),
+                style: isWide
+                    ? PharmaConnectTypography.featureTitle
+                    : PharmaConnectTypography.cardTitle,
               ),
-              SizedBox(height: 3),
-              Text(
-                'Manage official catalog workflow drafts',
+              const Text(
+                'Company catalog workspace',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: _OfficialCatalogHome._mutedText,
-                  fontSize: 13,
-                ),
+                style: PharmaConnectTypography.supporting,
               ),
             ],
+          ),
+        ),
+        Semantics(
+          label: 'Official catalog workflow',
+          child: Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: isWide
+                  ? PharmaConnectSpacing.compact
+                  : PharmaConnectSpacing.small,
+              vertical: PharmaConnectSpacing.small,
+            ),
+            decoration: BoxDecoration(
+              color: PharmaConnectColors.unresolvedContainer,
+              borderRadius: BorderRadius.circular(PharmaConnectRadii.pill),
+              border: Border.all(color: PharmaConnectColors.unresolvedBorder),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                const Icon(
+                  Icons.account_tree_outlined,
+                  color: PharmaConnectColors.linkFocus,
+                  size: 18,
+                ),
+                if (isWide) ...<Widget>[
+                  const SizedBox(width: PharmaConnectSpacing.small),
+                  Text(
+                    'Official workflow',
+                    style: PharmaConnectTypography.label.copyWith(
+                      color: PharmaConnectColors.linkFocus,
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
         ),
       ],
@@ -170,72 +212,196 @@ class _CompanyCatalogHeader extends StatelessWidget {
   }
 }
 
-class _CompanyDraftActionCard extends StatelessWidget {
-  const _CompanyDraftActionCard();
+class _CompanyWorkflowOverview extends StatelessWidget {
+  const _CompanyWorkflowOverview({
+    required this.products,
+    required this.isWide,
+  });
+
+  final AsyncValue<List<ProductSummary>> products;
+  final bool isWide;
+
+  void _openCreateDraft(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) => const _CreateDraftSheet(),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(24),
-      onTap: () => showModalBottomSheet<void>(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (BuildContext context) => const _CreateDraftSheet(),
-      ),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: _OfficialCatalogHome._surface,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+    final List<ProductSummary>? productList = products.hasValue
+        ? products.requireValue
+        : null;
+    final int editableCount =
+        productList
+            ?.where((ProductSummary value) => value.status.isCompanyEditable)
+            .length ??
+        0;
+    final int reviewCount =
+        productList
+            ?.where(
+              (ProductSummary value) =>
+                  value.status == ProductLifecycleStatus.submitted,
+            )
+            .length ??
+        0;
+    final int publishedCount =
+        productList
+            ?.where(
+              (ProductSummary value) =>
+                  value.status == ProductLifecycleStatus.published,
+            )
+            .length ??
+        0;
+
+    final Widget introduction = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        const Text(
+          'Official product workflow',
+          style: PharmaConnectTypography.pageTitle,
         ),
-        child: Row(
-          children: <Widget>[
-            Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                color: const Color(0xFF35C9B7).withValues(alpha: 0.14),
-                borderRadius: BorderRadius.circular(17),
-              ),
-              child: const Icon(
-                Icons.add_circle_outline_rounded,
-                color: Color(0xFF35C9B7),
-                size: 27,
-              ),
-            ),
-            const SizedBox(width: 15),
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(
-                    'Create product draft',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  SizedBox(height: 5),
-                  Text(
-                    'Start a minimal official catalog workflow draft.',
-                    style: TextStyle(
-                      color: _OfficialCatalogHome._mutedText,
-                      fontSize: 12,
-                      height: 1.35,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 10),
-            const Icon(Icons.chevron_right_rounded, color: Color(0xFF718197)),
-          ],
+        const SizedBox(height: PharmaConnectSpacing.small),
+        const Text(
+          'Prepare and submit official catalog records. Company-page publication remains a separate workflow.',
+          style: PharmaConnectTypography.body,
         ),
+        const SizedBox(height: PharmaConnectSpacing.large),
+        FilledButton.icon(
+          key: const Key('company-create-draft-button'),
+          onPressed: () => _openCreateDraft(context),
+          icon: const Icon(Icons.add_outlined),
+          label: const Text('Create product draft'),
+        ),
+      ],
+    );
+
+    final Widget metrics = Wrap(
+      spacing: PharmaConnectSpacing.small,
+      runSpacing: PharmaConnectSpacing.small,
+      children: <Widget>[
+        _CompanyWorkflowMetric(
+          label: 'Editable',
+          value: productList == null ? '—' : '$editableCount',
+          color: PharmaConnectColors.linkFocus,
+        ),
+        _CompanyWorkflowMetric(
+          label: 'In review',
+          value: productList == null ? '—' : '$reviewCount',
+          color: PharmaConnectColors.warning,
+        ),
+        _CompanyWorkflowMetric(
+          label: 'Published',
+          value: productList == null ? '—' : '$publishedCount',
+          color: PharmaConnectColors.success,
+        ),
+      ],
+    );
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(
+        isWide ? PharmaConnectSpacing.xLarge : PharmaConnectSpacing.large,
       ),
+      decoration: BoxDecoration(
+        color: PharmaConnectColors.surface,
+        borderRadius: BorderRadius.circular(PharmaConnectRadii.dialog),
+        border: Border.all(color: PharmaConnectColors.subtleBorder),
+      ),
+      child: isWide
+          ? Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: <Widget>[
+                Expanded(flex: 5, child: introduction),
+                const SizedBox(width: PharmaConnectSpacing.xLarge),
+                Expanded(flex: 4, child: metrics),
+              ],
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                introduction,
+                const SizedBox(height: PharmaConnectSpacing.large),
+                metrics,
+              ],
+            ),
+    );
+  }
+}
+
+class _CompanyWorkflowMetric extends StatelessWidget {
+  const _CompanyWorkflowMetric({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final String label;
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(minWidth: 112),
+      padding: const EdgeInsets.all(PharmaConnectSpacing.medium),
+      decoration: BoxDecoration(
+        color: PharmaConnectColors.elevatedSurface,
+        borderRadius: BorderRadius.circular(PharmaConnectRadii.card),
+        border: Border.all(color: PharmaConnectColors.subtleBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            value,
+            style: PharmaConnectTypography.featureTitle.copyWith(color: color),
+          ),
+          const SizedBox(height: PharmaConnectSpacing.xSmall),
+          Text(label, style: PharmaConnectTypography.auxiliary),
+        ],
+      ),
+    );
+  }
+}
+
+class _CompanyWorkflowHeading extends StatelessWidget {
+  const _CompanyWorkflowHeading({required this.products});
+
+  final AsyncValue<List<ProductSummary>> products;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: <Widget>[
+        const Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                'Company products',
+                style: PharmaConnectTypography.sectionTitle,
+              ),
+              SizedBox(height: PharmaConnectSpacing.xSmall),
+              Text(
+                'Draft, review, and publication status for official catalog records.',
+                style: PharmaConnectTypography.supporting,
+              ),
+            ],
+          ),
+        ),
+        if (products.hasValue)
+          Text(
+            '${products.requireValue.length} records',
+            style: PharmaConnectTypography.label.copyWith(
+              color: PharmaConnectColors.linkFocus,
+            ),
+          ),
+      ],
     );
   }
 }
@@ -335,145 +501,149 @@ class _CreateDraftSheetState extends ConsumerState<_CreateDraftSheet> {
         _brandNameController.text.trim().isNotEmpty &&
         !_isSubmitting;
 
-    return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
-        decoration: const BoxDecoration(
-          color: _OfficialCatalogHome._background,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+    return Align(
+      alignment: Alignment.bottomCenter,
+      child: Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.viewInsetsOf(context).bottom,
         ),
-        child: SafeArea(
-          top: false,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Center(
-                  child: Container(
-                    width: 44,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.18),
-                      borderRadius: BorderRadius.circular(999),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 720),
+          padding: const EdgeInsets.fromLTRB(
+            PharmaConnectSpacing.large,
+            PharmaConnectSpacing.medium,
+            PharmaConnectSpacing.large,
+            PharmaConnectSpacing.xLarge,
+          ),
+          decoration: const BoxDecoration(
+            color: PharmaConnectColors.canvas,
+            borderRadius: BorderRadius.vertical(
+              top: Radius.circular(PharmaConnectRadii.dialog),
+            ),
+            border: Border(
+              top: BorderSide(color: PharmaConnectColors.strongBorder),
+              left: BorderSide(color: PharmaConnectColors.strongBorder),
+              right: BorderSide(color: PharmaConnectColors.strongBorder),
+            ),
+          ),
+          child: SafeArea(
+            top: false,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Center(
+                    child: Container(
+                      width: 44,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: PharmaConnectColors.strongBorder,
+                        borderRadius: BorderRadius.circular(
+                          PharmaConnectRadii.pill,
+                        ),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 18),
-                const Text(
-                  'Create product draft',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.3,
+                  const SizedBox(height: 18),
+                  const Text(
+                    'Create product draft',
+                    style: PharmaConnectTypography.featureTitle,
                   ),
-                ),
-                const SizedBox(height: 6),
-                const Text(
-                  'Enter only the fields required by the current catalog draft command.',
-                  style: TextStyle(
-                    color: _OfficialCatalogHome._mutedText,
-                    fontSize: 12,
-                    height: 1.35,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                if (isLoading)
-                  const _CatalogStateCard(
-                    icon: Icons.sync_rounded,
-                    accent: Color(0xFF35C9B7),
-                    title: 'Loading draft fields',
-                    subtitle: 'Fetching company and taxonomy data.',
-                  )
-                else if (hasError)
-                  const _CatalogStateCard(
-                    icon: Icons.error_outline_rounded,
-                    accent: Color(0xFFFF9B8D),
-                    title: 'Draft fields could not load',
-                    subtitle: 'Required provider data is unavailable.',
-                  )
-                else if (access == null || !access.canManageDrafts)
-                  const _CatalogStateCard(
-                    icon: Icons.lock_outline_rounded,
-                    accent: Color(0xFFFF9B8D),
-                    title: 'Draft creation unavailable',
-                    subtitle:
-                        'This account cannot manage company catalog drafts.',
-                  )
-                else if (classes.isEmpty)
-                  const _CatalogStateCard(
-                    icon: Icons.category_outlined,
-                    accent: Color(0xFF8C7CFF),
-                    title: 'No drug classes available',
-                    subtitle:
-                        'A provider-supplied drug class is required before creating a draft.',
-                  )
-                else ...<Widget>[
-                  _DraftTextField(
-                    controller: _brandNameController,
-                    label: 'English brand name',
-                    onChanged: (_) => setState(() {}),
-                  ),
-                  const SizedBox(height: 14),
-                  _DraftDropdown<ProductCategory>(
-                    label: 'Product category',
-                    value: _category,
-                    items: ProductCategory.values,
-                    itemLabel: (ProductCategory value) =>
-                        _readableCatalogValue(value.databaseValue),
-                    onChanged: (ProductCategory? value) {
-                      if (value != null) {
-                        setState(() {
-                          _category = value;
-                        });
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 14),
-                  _DraftDropdown<String>(
-                    label: 'Drug class',
-                    value: _selectedDrugClassId,
-                    items: classes.map((DrugClass value) => value.id).toList(),
-                    itemLabel: (String value) {
-                      final DrugClass drugClass = classes.firstWhere(
-                        (DrugClass candidate) => candidate.id == value,
-                      );
-                      return _taxonomyName(
-                        drugClass.translations,
-                        drugClass.code,
-                      );
-                    },
-                    onChanged: (String? value) {
-                      setState(() {
-                        _selectedDrugClassId = value;
-                      });
-                    },
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Enter only the fields required by the current catalog draft command.',
+                    style: PharmaConnectTypography.supporting,
                   ),
                   const SizedBox(height: 20),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: canSubmit ? () => _submit(access) : null,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: PharmaConnectColors.primary,
-                        foregroundColor: Colors.white,
-                        disabledBackgroundColor: Colors.white.withValues(
-                          alpha: 0.08,
+                  if (isLoading)
+                    const _CompanyCatalogStatePanel(
+                      icon: Icons.sync_outlined,
+                      presentation:
+                          PharmaConnectSemanticStatusMapper.unresolved,
+                      title: 'Loading draft fields',
+                      subtitle: 'Fetching company and taxonomy data.',
+                      showProgress: true,
+                    )
+                  else if (hasError)
+                    const _CompanyCatalogStatePanel(
+                      icon: Icons.error_outline,
+                      presentation: PharmaConnectSemanticStatusMapper.error,
+                      title: 'Draft fields could not load',
+                      subtitle: 'Required provider data could not be loaded.',
+                    )
+                  else if (access == null || !access.canManageDrafts)
+                    const _CompanyCatalogStatePanel(
+                      icon: Icons.lock_outline,
+                      presentation: PharmaConnectSemanticStatusMapper.neutral,
+                      title: 'Draft creation restricted',
+                      subtitle:
+                          'This account cannot manage company catalog drafts.',
+                    )
+                  else if (classes.isEmpty)
+                    const _CompanyCatalogStatePanel(
+                      icon: Icons.category_outlined,
+                      presentation: PharmaConnectSemanticStatusMapper.warning,
+                      title: 'No drug classes configured',
+                      subtitle:
+                          'A provider-supplied drug class is required before creating a draft.',
+                    )
+                  else ...<Widget>[
+                    _DraftTextField(
+                      controller: _brandNameController,
+                      label: 'English brand name',
+                      onChanged: (_) => setState(() {}),
+                    ),
+                    const SizedBox(height: 14),
+                    _DraftDropdown<ProductCategory>(
+                      label: 'Product category',
+                      value: _category,
+                      items: ProductCategory.values,
+                      itemLabel: (ProductCategory value) =>
+                          _readableCatalogValue(value.databaseValue),
+                      onChanged: (ProductCategory? value) {
+                        if (value != null) {
+                          setState(() {
+                            _category = value;
+                          });
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 14),
+                    _DraftDropdown<String>(
+                      label: 'Drug class',
+                      value: _selectedDrugClassId,
+                      items: classes
+                          .map((DrugClass value) => value.id)
+                          .toList(),
+                      itemLabel: (String value) {
+                        final DrugClass drugClass = classes.firstWhere(
+                          (DrugClass candidate) => candidate.id == value,
+                        );
+                        return _taxonomyName(
+                          drugClass.translations,
+                          drugClass.code,
+                        );
+                      },
+                      onChanged: (String? value) {
+                        setState(() {
+                          _selectedDrugClassId = value;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        onPressed: canSubmit ? () => _submit(access) : null,
+                        child: Text(
+                          _isSubmitting ? 'Creating draft...' : 'Create draft',
                         ),
-                        disabledForegroundColor: Colors.white.withValues(
-                          alpha: 0.38,
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                      child: Text(
-                        _isSubmitting ? 'Creating draft...' : 'Create draft',
                       ),
                     ),
-                  ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ),
@@ -498,20 +668,20 @@ class _DraftTextField extends StatelessWidget {
     return TextField(
       controller: controller,
       onChanged: onChanged,
-      cursorColor: const Color(0xFF35C9B7),
-      style: const TextStyle(color: Colors.white, fontSize: 14),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(color: _OfficialCatalogHome._mutedText),
         filled: true,
-        fillColor: _OfficialCatalogHome._surface,
+        fillColor: PharmaConnectColors.elevatedSurface,
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
-          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.06)),
+          borderRadius: BorderRadius.circular(PharmaConnectRadii.control),
+          borderSide: const BorderSide(color: PharmaConnectColors.subtleBorder),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
-          borderSide: const BorderSide(color: Color(0xFF35C9B7)),
+          borderRadius: BorderRadius.circular(PharmaConnectRadii.control),
+          borderSide: const BorderSide(
+            color: PharmaConnectColors.linkFocus,
+            width: PharmaConnectBorders.focus,
+          ),
         ),
       ),
     );
@@ -546,21 +716,22 @@ class _DraftDropdown<T> extends StatelessWidget {
           )
           .toList(),
       onChanged: onChanged,
-      dropdownColor: _OfficialCatalogHome._surface,
-      iconEnabledColor: const Color(0xFF35C9B7),
-      style: const TextStyle(color: Colors.white, fontSize: 14),
+      dropdownColor: PharmaConnectColors.elevatedSurface,
+      iconEnabledColor: PharmaConnectColors.linkFocus,
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(color: _OfficialCatalogHome._mutedText),
         filled: true,
-        fillColor: _OfficialCatalogHome._surface,
+        fillColor: PharmaConnectColors.elevatedSurface,
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
-          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.06)),
+          borderRadius: BorderRadius.circular(PharmaConnectRadii.control),
+          borderSide: const BorderSide(color: PharmaConnectColors.subtleBorder),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
-          borderSide: const BorderSide(color: Color(0xFF35C9B7)),
+          borderRadius: BorderRadius.circular(PharmaConnectRadii.control),
+          borderSide: const BorderSide(
+            color: PharmaConnectColors.linkFocus,
+            width: PharmaConnectBorders.focus,
+          ),
         ),
       ),
     );
@@ -568,48 +739,75 @@ class _DraftDropdown<T> extends StatelessWidget {
 }
 
 class _CompanyProductWorkflowSection extends StatelessWidget {
-  const _CompanyProductWorkflowSection({required this.products});
+  const _CompanyProductWorkflowSection({
+    required this.products,
+    required this.isWide,
+    required this.onRetry,
+  });
 
   final AsyncValue<List<ProductSummary>> products;
+  final bool isWide;
+  final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
     if (products.hasError) {
-      return const _CatalogStateCard(
-        icon: Icons.error_outline_rounded,
-        accent: Color(0xFFFF9B8D),
+      return _CompanyCatalogStatePanel(
+        icon: Icons.error_outline,
+        presentation: PharmaConnectSemanticStatusMapper.error,
         title: 'Company catalog could not load',
-        subtitle: 'Please try again or return later.',
+        subtitle: 'The workflow records are temporarily unavailable.',
+        actionLabel: 'Retry',
+        onAction: onRetry,
       );
     }
 
     if (products.isLoading) {
-      return const _CatalogStateCard(
-        icon: Icons.sync_rounded,
-        accent: Color(0xFF35C9B7),
+      return const _CompanyCatalogStatePanel(
+        icon: Icons.sync_outlined,
+        presentation: PharmaConnectSemanticStatusMapper.unresolved,
         title: 'Loading company catalog',
-        subtitle: 'Fetching workflow products for this session.',
+        subtitle: 'Retrieving workflow records for the current company.',
+        showProgress: true,
       );
     }
 
     final List<ProductSummary> productList = products.requireValue;
     if (productList.isEmpty) {
-      return const _CatalogStateCard(
-        icon: Icons.inventory_2_outlined,
-        accent: Color(0xFF8C7CFF),
+      return const _CompanyCatalogStatePanel(
+        icon: Icons.description_outlined,
+        presentation: PharmaConnectSemanticStatusMapper.neutral,
         title: 'No company products yet',
-        subtitle: 'Drafts and submitted products will appear here.',
+        subtitle:
+            'Create a product draft to begin the official catalog workflow.',
       );
     }
 
-    return Column(
-      children: <Widget>[
-        for (int index = 0; index < productList.length; index++)
-          Padding(
-            padding: EdgeInsets.only(top: index == 0 ? 0 : 14),
-            child: _CompanyProductWorkflowCard(product: productList[index]),
-          ),
-      ],
+    if (!isWide) {
+      return Column(
+        key: const Key('company-catalog-list'),
+        children: <Widget>[
+          for (int index = 0; index < productList.length; index++) ...<Widget>[
+            if (index > 0) const SizedBox(height: PharmaConnectSpacing.compact),
+            _CompanyProductWorkflowCard(product: productList[index]),
+          ],
+        ],
+      );
+    }
+
+    return GridView.builder(
+      key: const Key('company-catalog-grid'),
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: productList.length,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: PharmaConnectSpacing.medium,
+        mainAxisSpacing: PharmaConnectSpacing.medium,
+        mainAxisExtent: 218,
+      ),
+      itemBuilder: (BuildContext context, int index) =>
+          _CompanyProductWorkflowCard(product: productList[index]),
     );
   }
 }
@@ -623,89 +821,210 @@ class _CompanyProductWorkflowCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final _ProductDisplayData data = _ProductDisplayData.fromProduct(product);
     final String status = _readableCatalogValue(product.status.databaseValue);
+    final PharmaConnectStatusPresentation statusPresentation =
+        PharmaConnectSemanticStatusMapper.fromLifecycleValue(
+          product.status.databaseValue,
+        );
 
-    return InkWell(
-      borderRadius: BorderRadius.circular(22),
-      onTap: () => showModalBottomSheet<void>(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (BuildContext context) =>
-            _CompanyProductDetailSheet(productId: product.id),
-      ),
-      child: Container(
-        padding: const EdgeInsets.all(17),
-        decoration: BoxDecoration(
-          color: _OfficialCatalogHome._surfaceSoft,
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Container(
-              width: 54,
-              height: 54,
-              decoration: BoxDecoration(
-                color: const Color(0xFF35C9B7).withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(17),
-              ),
-              child: const Icon(
-                Icons.inventory_2_outlined,
-                color: Color(0xFF35C9B7),
-                size: 25,
-              ),
+    return SizedBox(
+      height: 218,
+      child: Semantics(
+        button: true,
+        label: 'Open ${data.brandName} company workflow details',
+        child: Material(
+          color: PharmaConnectColors.surface,
+          borderRadius: BorderRadius.circular(PharmaConnectRadii.card),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(PharmaConnectRadii.card),
+            onTap: () => showModalBottomSheet<void>(
+              context: context,
+              isScrollControlled: true,
+              backgroundColor: Colors.transparent,
+              builder: (BuildContext context) =>
+                  _CompanyProductDetailSheet(productId: product.id),
             ),
-            const SizedBox(width: 15),
-            Expanded(
+            child: Container(
+              padding: const EdgeInsets.all(PharmaConnectSpacing.medium),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(PharmaConnectRadii.card),
+                border: Border.all(color: PharmaConnectColors.subtleBorder),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
                   Row(
                     children: <Widget>[
-                      Expanded(
-                        child: Text(
-                          data.brandName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
+                      Container(
+                        width: PharmaConnectSpacing.xxxLarge,
+                        height: PharmaConnectSpacing.xxxLarge,
+                        decoration: BoxDecoration(
+                          color: PharmaConnectColors.elevatedSurface,
+                          borderRadius: BorderRadius.circular(
+                            PharmaConnectRadii.control,
+                          ),
+                          border: Border.all(
+                            color: PharmaConnectColors.subtleBorder,
                           ),
                         ),
+                        child: const Icon(
+                          Icons.description_outlined,
+                          color: PharmaConnectColors.linkFocus,
+                        ),
                       ),
-                      const SizedBox(width: 8),
-                      _WorkflowStatusPill(label: status),
+                      const Spacer(),
+                      _CompanyStatusBadge(
+                        label: status,
+                        presentation: statusPresentation,
+                      ),
                     ],
                   ),
-                  const SizedBox(height: 5),
+                  const SizedBox(height: PharmaConnectSpacing.medium),
+                  Text(
+                    data.brandName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: PharmaConnectTypography.cardTitle,
+                  ),
+                  const SizedBox(height: PharmaConnectSpacing.xSmall),
                   Text(
                     data.genericName,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: _OfficialCatalogHome._mutedText,
-                      fontSize: 12,
-                      height: 1.35,
-                    ),
+                    style: PharmaConnectTypography.supporting,
                   ),
-                  const SizedBox(height: 7),
-                  Text(
-                    'Updated ${_formatShortDate(product.updatedAt)}',
-                    style: const TextStyle(
-                      color: Color(0xFFB8C4D3),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  const Spacer(),
+                  Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: Text(
+                          _companyWorkflowCue(product.status),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: PharmaConnectTypography.auxiliary.copyWith(
+                            color: statusPresentation.foreground,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: PharmaConnectSpacing.small),
+                      Text(
+                        _formatShortDate(product.updatedAt),
+                        style: PharmaConnectTypography.auxiliary,
+                      ),
+                      const SizedBox(width: PharmaConnectSpacing.small),
+                      const Icon(
+                        Icons.chevron_right_outlined,
+                        color: PharmaConnectColors.secondaryText,
+                        size: 20,
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 8),
-            const Icon(Icons.chevron_right_rounded, color: Color(0xFF718197)),
-          ],
+          ),
         ),
+      ),
+    );
+  }
+}
+
+String _companyWorkflowCue(ProductLifecycleStatus status) {
+  return switch (status) {
+    ProductLifecycleStatus.draft => 'Complete required product information',
+    ProductLifecycleStatus.changesRequested => 'Action required before review',
+    ProductLifecycleStatus.submitted => 'Awaiting official catalog review',
+    ProductLifecycleStatus.published => 'Published in the official catalog',
+    ProductLifecycleStatus.hidden => 'Restricted from the official catalog',
+    ProductLifecycleStatus.archived => 'Read-only workflow record',
+  };
+}
+
+class _CompanyStatusBadge extends StatelessWidget {
+  const _CompanyStatusBadge({required this.label, required this.presentation});
+
+  final String label;
+  final PharmaConnectStatusPresentation presentation;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: '${presentation.semanticCategory}: $label',
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: PharmaConnectSpacing.compact,
+          vertical: PharmaConnectSpacing.small,
+        ),
+        decoration: BoxDecoration(
+          color: presentation.container,
+          borderRadius: BorderRadius.circular(PharmaConnectRadii.pill),
+          border: Border.all(color: presentation.border),
+        ),
+        child: Text(
+          label,
+          style: PharmaConnectTypography.auxiliary.copyWith(
+            color: presentation.foreground,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CompanyCatalogStatePanel extends StatelessWidget {
+  const _CompanyCatalogStatePanel({
+    required this.icon,
+    required this.presentation,
+    required this.title,
+    required this.subtitle,
+    this.actionLabel,
+    this.onAction,
+    this.showProgress = false,
+  });
+
+  final IconData icon;
+  final PharmaConnectStatusPresentation presentation;
+  final String title;
+  final String subtitle;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+  final bool showProgress;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: const Key('company-catalog-state-panel'),
+      width: double.infinity,
+      padding: const EdgeInsets.all(PharmaConnectSpacing.large),
+      decoration: BoxDecoration(
+        color: PharmaConnectColors.surface,
+        borderRadius: BorderRadius.circular(PharmaConnectRadii.card),
+        border: Border.all(color: presentation.border),
+      ),
+      child: Column(
+        children: <Widget>[
+          Icon(icon, color: presentation.foreground, size: 30),
+          const SizedBox(height: PharmaConnectSpacing.compact),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: PharmaConnectTypography.cardTitle,
+          ),
+          const SizedBox(height: PharmaConnectSpacing.small),
+          Text(
+            subtitle,
+            textAlign: TextAlign.center,
+            style: PharmaConnectTypography.supporting,
+          ),
+          if (showProgress) ...<Widget>[
+            const SizedBox(height: PharmaConnectSpacing.medium),
+            const LinearProgressIndicator(),
+          ],
+          if (actionLabel != null && onAction != null) ...<Widget>[
+            const SizedBox(height: PharmaConnectSpacing.medium),
+            OutlinedButton(onPressed: onAction, child: Text(actionLabel!)),
+          ],
+        ],
       ),
     );
   }
@@ -978,129 +1297,143 @@ class _CompanyProductDetailSheetState
         ? null
         : ref.watch(companyProductDetailProvider(productId));
 
-    return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
-        decoration: const BoxDecoration(
-          color: _OfficialCatalogHome._background,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+    return Align(
+      alignment: Alignment.bottomCenter,
+      child: Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.viewInsetsOf(context).bottom,
         ),
-        child: SafeArea(
-          top: false,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Center(
-                  child: Container(
-                    width: 44,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.18),
-                      borderRadius: BorderRadius.circular(999),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 960),
+          padding: const EdgeInsets.fromLTRB(
+            PharmaConnectSpacing.large,
+            PharmaConnectSpacing.medium,
+            PharmaConnectSpacing.large,
+            PharmaConnectSpacing.xLarge,
+          ),
+          decoration: const BoxDecoration(
+            color: PharmaConnectColors.canvas,
+            borderRadius: BorderRadius.vertical(
+              top: Radius.circular(PharmaConnectRadii.dialog),
+            ),
+            border: Border(
+              top: BorderSide(color: PharmaConnectColors.strongBorder),
+              left: BorderSide(color: PharmaConnectColors.strongBorder),
+              right: BorderSide(color: PharmaConnectColors.strongBorder),
+            ),
+          ),
+          child: SafeArea(
+            top: false,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Center(
+                    child: Container(
+                      width: 44,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: PharmaConnectColors.strongBorder,
+                        borderRadius: BorderRadius.circular(
+                          PharmaConnectRadii.pill,
+                        ),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 18),
-                const Text(
-                  'Company product detail',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.3,
+                  const SizedBox(height: 18),
+                  const Text(
+                    'Company product detail',
+                    style: PharmaConnectTypography.featureTitle,
                   ),
-                ),
-                const SizedBox(height: 6),
-                const Text(
-                  'Workflow detail for the company catalog. Publication is separate.',
-                  style: TextStyle(
-                    color: _OfficialCatalogHome._mutedText,
-                    fontSize: 12,
-                    height: 1.35,
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Workflow detail for the company catalog. Publication is separate.',
+                    style: PharmaConnectTypography.supporting,
                   ),
-                ),
-                const SizedBox(height: 20),
-                if (detail == null)
-                  const _CatalogStateCard(
-                    icon: Icons.search_off_rounded,
-                    accent: Color(0xFFFF9B8D),
-                    title: 'Product not found',
-                    subtitle:
-                        'This workflow product could not be opened safely.',
-                  )
-                else
-                  _CompanyProductDetailContent(
-                    detail: detail,
-                    onProductLoaded: _hydrateProduct,
-                    brandNameController: _brandNameController,
-                    strengthController: _strengthController,
-                    dosageFormController: _dosageFormController,
-                    routeController: _routeController,
-                    packSizeController: _packSizeController,
-                    registrationNumberController: _registrationNumberController,
-                    registrationAuthorityController:
-                        _registrationAuthorityController,
-                    registrationExpiresOnController:
-                        _registrationExpiresOnController,
-                    storageConditionsController: _storageConditionsController,
-                    approvedIndicationsController:
-                        _approvedIndicationsController,
-                    usualAdultDoseController: _usualAdultDoseController,
-                    contraindicationsController: _contraindicationsController,
-                    commonAdverseEffectsController:
-                        _commonAdverseEffectsController,
-                    category: _category,
-                    drugClassId: _drugClassId,
-                    genericDrugId: _genericDrugId,
-                    marketStatus: _marketStatus,
-                    registrationStatus: _registrationStatus,
-                    specialtyIds: _specialtyIds,
-                    isSaving: _isSaving,
-                    isSubmitting: _isSubmitting,
-                    onCategoryChanged: (ProductCategory value) {
-                      setState(() {
-                        _category = value;
-                      });
-                    },
-                    onDrugClassChanged: (String value) {
-                      setState(() {
-                        _drugClassId = value;
-                      });
-                    },
-                    onGenericDrugChanged: (String? value) {
-                      setState(() {
-                        _genericDrugId = value;
-                      });
-                    },
-                    onMarketStatusChanged: (IraqMarketStatus value) {
-                      setState(() {
-                        _marketStatus = value;
-                      });
-                    },
-                    onRegistrationStatusChanged:
-                        (ProductRegistrationStatus value) {
-                          setState(() {
-                            _registrationStatus = value;
-                          });
-                        },
-                    onSpecialtyToggled: (String value, bool selected) {
-                      setState(() {
-                        final Set<String> next = Set<String>.of(_specialtyIds);
-                        if (selected) {
-                          next.add(value);
-                        } else {
-                          next.remove(value);
-                        }
-                        _specialtyIds = next;
-                      });
-                    },
-                    onSave: _save,
-                    onSubmitForReview: _submitForReview,
-                  ),
-              ],
+                  const SizedBox(height: 20),
+                  if (detail == null)
+                    const _CompanyCatalogStatePanel(
+                      icon: Icons.search_off_outlined,
+                      presentation: PharmaConnectSemanticStatusMapper.neutral,
+                      title: 'Product not found',
+                      subtitle:
+                          'This workflow product could not be opened safely.',
+                    )
+                  else
+                    _CompanyProductDetailContent(
+                      detail: detail,
+                      onProductLoaded: _hydrateProduct,
+                      brandNameController: _brandNameController,
+                      strengthController: _strengthController,
+                      dosageFormController: _dosageFormController,
+                      routeController: _routeController,
+                      packSizeController: _packSizeController,
+                      registrationNumberController:
+                          _registrationNumberController,
+                      registrationAuthorityController:
+                          _registrationAuthorityController,
+                      registrationExpiresOnController:
+                          _registrationExpiresOnController,
+                      storageConditionsController: _storageConditionsController,
+                      approvedIndicationsController:
+                          _approvedIndicationsController,
+                      usualAdultDoseController: _usualAdultDoseController,
+                      contraindicationsController: _contraindicationsController,
+                      commonAdverseEffectsController:
+                          _commonAdverseEffectsController,
+                      category: _category,
+                      drugClassId: _drugClassId,
+                      genericDrugId: _genericDrugId,
+                      marketStatus: _marketStatus,
+                      registrationStatus: _registrationStatus,
+                      specialtyIds: _specialtyIds,
+                      isSaving: _isSaving,
+                      isSubmitting: _isSubmitting,
+                      onCategoryChanged: (ProductCategory value) {
+                        setState(() {
+                          _category = value;
+                        });
+                      },
+                      onDrugClassChanged: (String value) {
+                        setState(() {
+                          _drugClassId = value;
+                        });
+                      },
+                      onGenericDrugChanged: (String? value) {
+                        setState(() {
+                          _genericDrugId = value;
+                        });
+                      },
+                      onMarketStatusChanged: (IraqMarketStatus value) {
+                        setState(() {
+                          _marketStatus = value;
+                        });
+                      },
+                      onRegistrationStatusChanged:
+                          (ProductRegistrationStatus value) {
+                            setState(() {
+                              _registrationStatus = value;
+                            });
+                          },
+                      onSpecialtyToggled: (String value, bool selected) {
+                        setState(() {
+                          final Set<String> next = Set<String>.of(
+                            _specialtyIds,
+                          );
+                          if (selected) {
+                            next.add(value);
+                          } else {
+                            next.remove(value);
+                          }
+                          _specialtyIds = next;
+                        });
+                      },
+                      onSave: _save,
+                      onSubmitForReview: _submitForReview,
+                    ),
+                ],
+              ),
             ),
           ),
         ),
@@ -1179,27 +1512,28 @@ class _CompanyProductDetailContent extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (detail.isLoading) {
-      return const _CatalogStateCard(
-        icon: Icons.sync_rounded,
-        accent: Color(0xFF35C9B7),
+      return const _CompanyCatalogStatePanel(
+        icon: Icons.sync_outlined,
+        presentation: PharmaConnectSemanticStatusMapper.unresolved,
         title: 'Loading product detail',
         subtitle: 'Fetching company workflow product data for this session.',
+        showProgress: true,
       );
     }
 
     if (detail.hasError) {
-      return const _CatalogStateCard(
-        icon: Icons.error_outline_rounded,
-        accent: Color(0xFFFF9B8D),
+      return const _CompanyCatalogStatePanel(
+        icon: Icons.error_outline,
+        presentation: PharmaConnectSemanticStatusMapper.error,
         title: 'Product detail could not load',
         subtitle: 'Please try again or return to the company catalog.',
       );
     }
 
     if (!detail.hasValue) {
-      return const _CatalogStateCard(
-        icon: Icons.search_off_rounded,
-        accent: Color(0xFF8C7CFF),
+      return const _CompanyCatalogStatePanel(
+        icon: Icons.search_off_outlined,
+        presentation: PharmaConnectSemanticStatusMapper.neutral,
         title: 'Product not found',
         subtitle: 'This company workflow product is not ready to display.',
       );
@@ -1299,9 +1633,9 @@ class _CompanyProductDetailContent extends ConsumerWidget {
             onSubmitForReview: onSubmitForReview,
           )
         else
-          const _CatalogStateCard(
-            icon: Icons.lock_outline_rounded,
-            accent: Color(0xFF8C7CFF),
+          const _CompanyCatalogStatePanel(
+            icon: Icons.lock_outline,
+            presentation: PharmaConnectSemanticStatusMapper.neutral,
             title: 'Read-only workflow item',
             subtitle:
                 'Only draft or changes-requested products can be edited in this phase.',
@@ -1398,18 +1732,19 @@ class _DraftEditShell extends ConsumerWidget {
     if (drugClasses.isLoading ||
         genericDrugs.isLoading ||
         specialties.isLoading) {
-      return const _CatalogStateCard(
-        icon: Icons.sync_rounded,
-        accent: Color(0xFF35C9B7),
+      return const _CompanyCatalogStatePanel(
+        icon: Icons.sync_outlined,
+        presentation: PharmaConnectSemanticStatusMapper.unresolved,
         title: 'Loading edit fields',
         subtitle: 'Fetching taxonomy choices for this workflow product.',
+        showProgress: true,
       );
     }
     if (drugClasses.hasError || genericDrugs.hasError || specialties.hasError) {
-      return const _CatalogStateCard(
-        icon: Icons.error_outline_rounded,
-        accent: Color(0xFFFF9B8D),
-        title: 'Workflow edit unavailable',
+      return const _CompanyCatalogStatePanel(
+        icon: Icons.error_outline,
+        presentation: PharmaConnectSemanticStatusMapper.error,
+        title: 'Workflow edit could not load',
         subtitle:
             'Taxonomy choices are required to update this product safely.',
       );
@@ -1421,21 +1756,21 @@ class _DraftEditShell extends ConsumerWidget {
         .where((ProductSpecialty specialty) => specialty.isActive)
         .toList(growable: false);
     if (classes.isEmpty) {
-      return const _CatalogStateCard(
+      return const _CompanyCatalogStatePanel(
         icon: Icons.category_outlined,
-        accent: Color(0xFF8C7CFF),
-        title: 'Workflow edit unavailable',
-        subtitle: 'No provider-supplied drug classes are available.',
+        presentation: PharmaConnectSemanticStatusMapper.warning,
+        title: 'Workflow edit restricted',
+        subtitle: 'No provider-supplied drug classes are configured.',
       );
     }
     final bool hasSelectedDrugClass = classes.any(
       (DrugClass value) => value.id == drugClassId,
     );
     if (!hasSelectedDrugClass) {
-      return const _CatalogStateCard(
+      return const _CompanyCatalogStatePanel(
         icon: Icons.category_outlined,
-        accent: Color(0xFF8C7CFF),
-        title: 'Workflow edit unavailable',
+        presentation: PharmaConnectSemanticStatusMapper.warning,
+        title: 'Workflow edit restricted',
         subtitle:
             'The current drug class is missing from provider-supplied taxonomy choices.',
       );
@@ -1454,11 +1789,11 @@ class _DraftEditShell extends ConsumerWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(PharmaConnectSpacing.large),
       decoration: BoxDecoration(
-        color: _OfficialCatalogHome._surfaceSoft,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        color: PharmaConnectColors.elevatedSurface,
+        borderRadius: BorderRadius.circular(PharmaConnectRadii.dialog),
+        border: Border.all(color: PharmaConnectColors.subtleBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1467,14 +1802,10 @@ class _DraftEditShell extends ConsumerWidget {
             title: 'Product completion',
             icon: Icons.edit_note_rounded,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: PharmaConnectSpacing.small),
           const Text(
             'Editable only for draft or changes-requested workflow products. Server validation remains authoritative.',
-            style: TextStyle(
-              color: _OfficialCatalogHome._mutedText,
-              fontSize: 12,
-              height: 1.35,
-            ),
+            style: PharmaConnectTypography.supporting,
           ),
           const SizedBox(height: 14),
           _CompletionSectionCard(
@@ -1666,12 +1997,8 @@ class _DraftEditShell extends ConsumerWidget {
             children: <Widget>[
               if (activeSpecialties.isEmpty)
                 const Text(
-                  'No active specialties are available from taxonomy providers.',
-                  style: TextStyle(
-                    color: _OfficialCatalogHome._mutedText,
-                    fontSize: 12,
-                    height: 1.35,
-                  ),
+                  'No active specialties are configured by taxonomy providers.',
+                  style: PharmaConnectTypography.supporting,
                 )
               else
                 _SpecialtyChoices(
@@ -1692,32 +2019,19 @@ class _DraftEditShell extends ConsumerWidget {
                 product.media.isEmpty
                     ? 'No media metadata recorded.'
                     : '${product.media.length} media metadata item(s) recorded.',
-                style: const TextStyle(
-                  color: _OfficialCatalogHome._mutedText,
-                  fontSize: 12,
-                  height: 1.35,
-                ),
+                style: PharmaConnectTypography.supporting,
               ),
               const SizedBox(height: 8),
               Text(
                 product.brochures.isEmpty
                     ? 'No brochure metadata recorded.'
                     : '${product.brochures.length} brochure metadata item(s) recorded.',
-                style: const TextStyle(
-                  color: _OfficialCatalogHome._mutedText,
-                  fontSize: 12,
-                  height: 1.35,
-                ),
+                style: PharmaConnectTypography.supporting,
               ),
               const SizedBox(height: 8),
               const Text(
                 'Upload, download, and signed URL workflows are intentionally not part of this phase.',
-                style: TextStyle(
-                  color: Color(0xFF35C9B7),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  height: 1.35,
-                ),
+                style: PharmaConnectTypography.auxiliary,
               ),
             ],
           ),
@@ -1730,13 +2044,6 @@ class _DraftEditShell extends ConsumerWidget {
                   : () {
                       onSave(product);
                     },
-              style: FilledButton.styleFrom(
-                backgroundColor: PharmaConnectColors.primary,
-                foregroundColor: Colors.white,
-                disabledBackgroundColor: Colors.white.withValues(alpha: 0.08),
-                disabledForegroundColor: Colors.white.withValues(alpha: 0.38),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
               child: Text(
                 isSaving ? 'Saving changes...' : 'Save workflow changes',
               ),
@@ -1769,11 +2076,11 @@ class _CompletionSectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(PharmaConnectSpacing.medium),
       decoration: BoxDecoration(
-        color: _OfficialCatalogHome._surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        color: PharmaConnectColors.surface,
+        borderRadius: BorderRadius.circular(PharmaConnectRadii.card),
+        border: Border.all(color: PharmaConnectColors.subtleBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1799,21 +2106,21 @@ class _CompletionTextArea extends StatelessWidget {
       controller: controller,
       minLines: 2,
       maxLines: 4,
-      cursorColor: const Color(0xFF35C9B7),
-      style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.35),
       decoration: InputDecoration(
         labelText: label,
         alignLabelWithHint: true,
-        labelStyle: const TextStyle(color: _OfficialCatalogHome._mutedText),
         filled: true,
-        fillColor: _OfficialCatalogHome._surfaceSoft,
+        fillColor: PharmaConnectColors.elevatedSurface,
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
-          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.06)),
+          borderRadius: BorderRadius.circular(PharmaConnectRadii.control),
+          borderSide: const BorderSide(color: PharmaConnectColors.subtleBorder),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
-          borderSide: const BorderSide(color: Color(0xFF35C9B7)),
+          borderRadius: BorderRadius.circular(PharmaConnectRadii.control),
+          borderSide: const BorderSide(
+            color: PharmaConnectColors.linkFocus,
+            width: PharmaConnectBorders.focus,
+          ),
         ),
       ),
     );
@@ -1842,23 +2149,14 @@ class _CompositionPreview extends StatelessWidget {
     if (generic == null) {
       return const Text(
         'Select a provider-supplied generic/scientific product to preview composition.',
-        style: TextStyle(
-          color: _OfficialCatalogHome._mutedText,
-          fontSize: 12,
-          height: 1.35,
-        ),
+        style: PharmaConnectTypography.supporting,
       );
     }
 
     if (ingredients.isEmpty) {
       return const Text(
         'This generic/scientific product has no active composition recorded.',
-        style: TextStyle(
-          color: Color(0xFFFFC978),
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
-          height: 1.35,
-        ),
+        style: PharmaConnectTypography.supporting,
       );
     }
 
@@ -1896,13 +2194,17 @@ class _SpecialtyChoices extends StatelessWidget {
             label: Text(_taxonomyName(specialty.translations, specialty.code)),
             onSelected: (bool value) => onToggled(specialty.id, value),
             showCheckmark: false,
-            backgroundColor: _OfficialCatalogHome._surfaceSoft,
-            selectedColor: const Color(0xFF35C9B7).withValues(alpha: 0.20),
-            side: BorderSide(color: Colors.white.withValues(alpha: 0.07)),
+            backgroundColor: PharmaConnectColors.elevatedSurface,
+            selectedColor: PharmaConnectColors.unresolvedContainer,
+            side: BorderSide(
+              color: selectedIds.contains(specialty.id)
+                  ? PharmaConnectColors.unresolvedBorder
+                  : PharmaConnectColors.subtleBorder,
+            ),
             labelStyle: TextStyle(
               color: selectedIds.contains(specialty.id)
-                  ? const Color(0xFFBFFBF2)
-                  : _OfficialCatalogHome._mutedText,
+                  ? PharmaConnectColors.linkFocus
+                  : PharmaConnectColors.secondaryText,
               fontWeight: FontWeight.w700,
               fontSize: 12,
             ),
@@ -1926,22 +2228,22 @@ class _SubmissionReadinessCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (readiness.hasError) {
-      return const _CatalogStateCard(
-        icon: Icons.error_outline_rounded,
-        accent: Color(0xFFFF9B8D),
+      return const _CompanyCatalogStatePanel(
+        icon: Icons.error_outline,
+        presentation: PharmaConnectSemanticStatusMapper.error,
         title: 'Submission readiness could not load',
-        subtitle:
-            'The submit action remains unavailable until readiness loads.',
+        subtitle: 'The submit action remains restricted until readiness loads.',
       );
     }
 
     if (readiness.isLoading) {
-      return const _CatalogStateCard(
-        icon: Icons.sync_rounded,
-        accent: Color(0xFF35C9B7),
+      return const _CompanyCatalogStatePanel(
+        icon: Icons.sync_outlined,
+        presentation: PharmaConnectSemanticStatusMapper.unresolved,
         title: 'Checking submission readiness',
         subtitle:
             'Provider readiness is advisory; submit validation remains authoritative.',
+        showProgress: true,
       );
     }
 
@@ -1949,11 +2251,11 @@ class _SubmissionReadinessCard extends StatelessWidget {
     if (!result.isReady) {
       return Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(PharmaConnectSpacing.large),
         decoration: BoxDecoration(
-          color: _OfficialCatalogHome._surface,
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+          color: PharmaConnectColors.warningContainer,
+          borderRadius: BorderRadius.circular(PharmaConnectRadii.card),
+          border: Border.all(color: PharmaConnectColors.warningBorder),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1963,24 +2265,18 @@ class _SubmissionReadinessCard extends StatelessWidget {
               icon: Icons.rule_rounded,
             ),
             const SizedBox(height: 12),
-            const Text(
-              'Resolve these provider-reported issues before submission.',
-              style: TextStyle(
-                color: _OfficialCatalogHome._mutedText,
-                fontSize: 12,
-                height: 1.35,
-              ),
+            Text(
+              '${result.issues.length} completion ${result.issues.length == 1 ? 'item' : 'items'} require attention before submission.',
+              style: PharmaConnectTypography.supporting,
             ),
             const SizedBox(height: 12),
             for (final CatalogReadinessIssue issue
                 in result.issues) ...<Widget>[
               Text(
                 _readableCatalogValue(issue.databaseValue),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 13,
+                style: PharmaConnectTypography.body.copyWith(
+                  color: PharmaConnectColors.warning,
                   fontWeight: FontWeight.w600,
-                  height: 1.35,
                 ),
               ),
               if (issue != result.issues.last) const SizedBox(height: 8),
@@ -1992,11 +2288,11 @@ class _SubmissionReadinessCard extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(PharmaConnectSpacing.large),
       decoration: BoxDecoration(
-        color: _OfficialCatalogHome._surface,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        color: PharmaConnectColors.successContainer,
+        borderRadius: BorderRadius.circular(PharmaConnectRadii.card),
+        border: Border.all(color: PharmaConnectColors.successBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2008,53 +2304,17 @@ class _SubmissionReadinessCard extends StatelessWidget {
           const SizedBox(height: 12),
           const Text(
             'Readiness is advisory. The submit action will still use server-side validation.',
-            style: TextStyle(
-              color: _OfficialCatalogHome._mutedText,
-              fontSize: 12,
-              height: 1.35,
-            ),
+            style: PharmaConnectTypography.supporting,
           ),
           const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
             child: FilledButton(
               onPressed: isSubmitting ? null : onSubmit,
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF35C9B7),
-                foregroundColor: const Color(0xFF06131F),
-                disabledBackgroundColor: Colors.white.withValues(alpha: 0.08),
-                disabledForegroundColor: Colors.white.withValues(alpha: 0.38),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
               child: Text(isSubmitting ? 'Submitting...' : 'Submit for review'),
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _WorkflowStatusPill extends StatelessWidget {
-  const _WorkflowStatusPill({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color(0xFF8C7CFF).withValues(alpha: 0.16),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          color: Color(0xFFC9C2FF),
-          fontSize: 10,
-          fontWeight: FontWeight.w800,
-        ),
       ),
     );
   }
@@ -2905,9 +3165,9 @@ class _DetailHeroCard extends StatelessWidget {
       width: double.infinity,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: _OfficialCatalogHome._surface,
-        borderRadius: BorderRadius.circular(26),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+        color: PharmaConnectColors.surface,
+        borderRadius: BorderRadius.circular(PharmaConnectRadii.dialog),
+        border: Border.all(color: PharmaConnectColors.subtleBorder),
       ),
       child: Stack(
         children: <Widget>[
@@ -2924,13 +3184,11 @@ class _DetailHeroCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                const Text(
-                  'OFFICIAL CATALOG PRODUCT',
-                  style: TextStyle(
-                    color: Color(0xFF38CDBB),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1.1,
+                Text(
+                  'COMPANY WORKFLOW PRODUCT',
+                  style: PharmaConnectTypography.label.copyWith(
+                    color: PharmaConnectColors.linkFocus,
+                    letterSpacing: 1,
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -2938,24 +3196,14 @@ class _DetailHeroCard extends StatelessWidget {
                   data.brandName,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 26,
-                    height: 1.15,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.5,
-                  ),
+                  style: PharmaConnectTypography.pageTitle,
                 ),
                 const SizedBox(height: 8),
                 Text(
                   data.genericName,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: _OfficialCatalogHome._mutedText,
-                    fontSize: 14,
-                    height: 1.4,
-                  ),
+                  style: PharmaConnectTypography.body,
                 ),
                 const SizedBox(height: 18),
                 Wrap(
@@ -2985,18 +3233,11 @@ class _DetailPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+        color: PharmaConnectColors.elevatedSurface,
+        borderRadius: BorderRadius.circular(PharmaConnectRadii.pill),
+        border: Border.all(color: PharmaConnectColors.strongBorder),
       ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
+      child: Text(label, style: PharmaConnectTypography.label),
     );
   }
 }
@@ -3024,11 +3265,11 @@ class _DetailInfoSection extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(PharmaConnectSpacing.large),
       decoration: BoxDecoration(
-        color: _OfficialCatalogHome._surfaceSoft,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        color: PharmaConnectColors.elevatedSurface,
+        borderRadius: BorderRadius.circular(PharmaConnectRadii.card),
+        border: Border.all(color: PharmaConnectColors.subtleBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -3059,23 +3300,14 @@ class _DetailSectionTitle extends StatelessWidget {
           width: 36,
           height: 36,
           decoration: BoxDecoration(
-            color: const Color(0xFF35C9B7).withValues(alpha: 0.14),
-            borderRadius: BorderRadius.circular(13),
+            color: PharmaConnectColors.unresolvedContainer,
+            borderRadius: BorderRadius.circular(PharmaConnectRadii.control),
+            border: Border.all(color: PharmaConnectColors.unresolvedBorder),
           ),
-          child: Icon(icon, color: const Color(0xFF35C9B7), size: 20),
+          child: Icon(icon, color: PharmaConnectColors.linkFocus, size: 20),
         ),
         const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.1,
-            ),
-          ),
-        ),
+        Expanded(child: Text(title, style: PharmaConnectTypography.cardTitle)),
       ],
     );
   }
@@ -3091,21 +3323,11 @@ class _DetailRow extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        Text(
-          row.label,
-          style: const TextStyle(
-            color: _OfficialCatalogHome._mutedText,
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
+        Text(row.label, style: PharmaConnectTypography.auxiliary),
         const SizedBox(height: 4),
         Text(
           row.value,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 13,
-            height: 1.4,
+          style: PharmaConnectTypography.body.copyWith(
             fontWeight: FontWeight.w600,
           ),
         ),
