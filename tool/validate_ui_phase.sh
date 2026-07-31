@@ -74,10 +74,12 @@ AUTH_UI_FILES=(
 )
 
 DOCTOR_CATALOG_UI_FILES=(
+  "apps/mobile/lib/app/router/mobile_router.dart"
   "apps/mobile/lib/features/catalog/presentation/catalog_entry_pages.dart"
   "apps/mobile/lib/features/catalog/presentation/doctor_catalog_pages.dart"
   "apps/mobile/test/catalog_home_test.dart"
   "apps/mobile/test/catalog_product_detail_test.dart"
+  "apps/mobile/test/auth_routing_test.dart"
 )
 
 run_stage() {
@@ -134,6 +136,8 @@ elif [[ "${MODE}" == "doctor-catalog-ui" ]]; then
     dart format --output=none --set-exit-if-changed "${FORMAT_PATHS[@]}"
   run_stage "Doctor catalog presentation analysis" \
     flutter analyze --no-pub apps/mobile/lib/features/catalog/presentation
+  run_stage "Mobile catalog routing analysis" \
+    flutter analyze --no-pub apps/mobile/lib/app/router/mobile_router.dart
   run_stage "Doctor catalog home tests" \
     flutter test --no-pub apps/mobile/test/catalog_home_test.dart
   run_stage "Doctor catalog detail tests" \

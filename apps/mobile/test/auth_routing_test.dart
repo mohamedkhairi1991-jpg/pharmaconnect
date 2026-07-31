@@ -91,6 +91,36 @@ void main() {
     );
   });
 
+  test('approved doctor sign in resolves to the official catalog', () {
+    const AsyncValue<SessionPrincipal?> doctorPrincipal = AsyncData(
+      SessionPrincipal(
+        kind: SessionPrincipalKind.healthcareProfessional,
+        profile: null,
+      ),
+    );
+
+    expect(
+      mobileAuthRedirect(
+        location: mobileSignInPath,
+        authState: authenticated,
+        principal: doctorPrincipal,
+        catalogAccess: const AsyncLoading<CatalogAccessState>(),
+      ),
+      mobileSessionLoadingPath,
+    );
+    expect(
+      mobileAuthRedirect(
+        location: mobileSessionLoadingPath,
+        authState: authenticated,
+        principal: doctorPrincipal,
+        catalogAccess: const AsyncData(
+          CatalogAccessState(CatalogAudience.officialCatalog),
+        ),
+      ),
+      mobileOfficialCatalogPath,
+    );
+  });
+
   test('official catalog denies pharmacist or unauthorized access', () {
     expect(
       mobileAuthRedirect(

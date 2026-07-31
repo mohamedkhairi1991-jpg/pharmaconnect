@@ -49,10 +49,12 @@ $authUiFiles = @(
 )
 
 $doctorCatalogUiFiles = @(
+  'apps/mobile/lib/app/router/mobile_router.dart',
   'apps/mobile/lib/features/catalog/presentation/catalog_entry_pages.dart',
   'apps/mobile/lib/features/catalog/presentation/doctor_catalog_pages.dart',
   'apps/mobile/test/catalog_home_test.dart',
-  'apps/mobile/test/catalog_product_detail_test.dart'
+  'apps/mobile/test/catalog_product_detail_test.dart',
+  'apps/mobile/test/auth_routing_test.dart'
 )
 
 function Invoke-ValidationStage {
@@ -135,6 +137,9 @@ if ($Mode -eq 'design-system') {
   }
   Invoke-ValidationStage 'Doctor catalog presentation analysis' {
     flutter analyze --no-pub apps/mobile/lib/features/catalog/presentation
+  }
+  Invoke-ValidationStage 'Mobile catalog routing analysis' {
+    flutter analyze --no-pub apps/mobile/lib/app/router/mobile_router.dart
   }
   Invoke-ValidationStage 'Doctor catalog home tests' {
     flutter test --no-pub apps/mobile/test/catalog_home_test.dart

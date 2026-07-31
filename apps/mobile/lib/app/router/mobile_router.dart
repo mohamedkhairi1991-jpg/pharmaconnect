@@ -206,6 +206,24 @@ String? mobileAuthRedirect({
     return location == catalogTarget ? null : catalogTarget;
   }
 
+  if (principalKind == SessionPrincipalKind.healthcareProfessional) {
+    final AsyncValue<CatalogAccessState> access =
+        catalogAccess ?? const AsyncLoading<CatalogAccessState>();
+    if (access.isLoading) {
+      return location == mobileSessionLoadingPath
+          ? null
+          : mobileSessionLoadingPath;
+    }
+    if (access.hasError || !access.requireValue.canReadOfficialCatalog) {
+      return location == mobileAccountUnavailablePath
+          ? null
+          : mobileAccountUnavailablePath;
+    }
+    return location == mobileOfficialCatalogPath
+        ? null
+        : mobileOfficialCatalogPath;
+  }
+
   return location == mobileAuthenticatedPath ? null : mobileAuthenticatedPath;
 }
 
