@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-  [ValidateSet('design-system', 'auth-ui', 'custom')]
+  [ValidateSet('design-system', 'auth-ui', 'doctor-catalog-ui', 'custom')]
   [string]$Mode = 'design-system',
   [string[]]$FormatPath = @(),
   [string[]]$AnalyzePath = @(),
@@ -46,6 +46,15 @@ $authUiFiles = @(
   'packages/pharmaconnect_l10n/lib/src/generated/app_localizations.dart',
   'packages/pharmaconnect_l10n/lib/src/generated/app_localizations_en.dart',
   'packages/pharmaconnect_l10n/lib/src/generated/app_localizations_ar.dart'
+)
+
+$doctorCatalogUiFiles = @(
+  'apps/mobile/lib/app/router/mobile_router.dart',
+  'apps/mobile/lib/features/catalog/presentation/catalog_entry_pages.dart',
+  'apps/mobile/lib/features/catalog/presentation/doctor_catalog_pages.dart',
+  'apps/mobile/test/catalog_home_test.dart',
+  'apps/mobile/test/catalog_product_detail_test.dart',
+  'apps/mobile/test/auth_routing_test.dart'
 )
 
 function Invoke-ValidationStage {
@@ -117,6 +126,29 @@ if ($Mode -eq 'design-system') {
   }
   Invoke-ValidationStage 'Admin authentication routing tests' {
     flutter test --no-pub apps/admin/test/auth_routing_test.dart
+  }
+} elseif ($Mode -eq 'doctor-catalog-ui') {
+  if ($FormatPath.Count -eq 0) {
+    $FormatPath = $doctorCatalogUiFiles
+  }
+
+  Invoke-ValidationStage 'Doctor catalog UI formatting verification' {
+    dart format --output=none --set-exit-if-changed @FormatPath
+  }
+  Invoke-ValidationStage 'Doctor catalog presentation analysis' {
+    flutter analyze --no-pub apps/mobile/lib/features/catalog/presentation
+  }
+  Invoke-ValidationStage 'Mobile catalog routing analysis' {
+    flutter analyze --no-pub apps/mobile/lib/app/router/mobile_router.dart
+  }
+  Invoke-ValidationStage 'Doctor catalog home tests' {
+    flutter test --no-pub apps/mobile/test/catalog_home_test.dart
+  }
+  Invoke-ValidationStage 'Doctor catalog detail tests' {
+    flutter test --no-pub apps/mobile/test/catalog_product_detail_test.dart
+  }
+  Invoke-ValidationStage 'Mobile catalog access routing tests' {
+    flutter test --no-pub apps/mobile/test/auth_routing_test.dart
   }
 } else {
   if (

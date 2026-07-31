@@ -73,6 +73,15 @@ AUTH_UI_FILES=(
   "packages/pharmaconnect_l10n/lib/src/generated/app_localizations_ar.dart"
 )
 
+DOCTOR_CATALOG_UI_FILES=(
+  "apps/mobile/lib/app/router/mobile_router.dart"
+  "apps/mobile/lib/features/catalog/presentation/catalog_entry_pages.dart"
+  "apps/mobile/lib/features/catalog/presentation/doctor_catalog_pages.dart"
+  "apps/mobile/test/catalog_home_test.dart"
+  "apps/mobile/test/catalog_product_detail_test.dart"
+  "apps/mobile/test/auth_routing_test.dart"
+)
+
 run_stage() {
   CURRENT_STAGE="$1"
   shift
@@ -118,6 +127,23 @@ elif [[ "${MODE}" == "auth-ui" ]]; then
     flutter test --no-pub apps/mobile/test/auth_routing_test.dart
   run_stage "Admin authentication routing tests" \
     flutter test --no-pub apps/admin/test/auth_routing_test.dart
+elif [[ "${MODE}" == "doctor-catalog-ui" ]]; then
+  if ((${#FORMAT_PATHS[@]} == 0)); then
+    FORMAT_PATHS=("${DOCTOR_CATALOG_UI_FILES[@]}")
+  fi
+
+  run_stage "Doctor catalog UI formatting verification" \
+    dart format --output=none --set-exit-if-changed "${FORMAT_PATHS[@]}"
+  run_stage "Doctor catalog presentation analysis" \
+    flutter analyze --no-pub apps/mobile/lib/features/catalog/presentation
+  run_stage "Mobile catalog routing analysis" \
+    flutter analyze --no-pub apps/mobile/lib/app/router/mobile_router.dart
+  run_stage "Doctor catalog home tests" \
+    flutter test --no-pub apps/mobile/test/catalog_home_test.dart
+  run_stage "Doctor catalog detail tests" \
+    flutter test --no-pub apps/mobile/test/catalog_product_detail_test.dart
+  run_stage "Mobile catalog access routing tests" \
+    flutter test --no-pub apps/mobile/test/auth_routing_test.dart
 elif [[ "${MODE}" == "custom" ]]; then
   if (
     (${#FORMAT_PATHS[@]} == 0) &&

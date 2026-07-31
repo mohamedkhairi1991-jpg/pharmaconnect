@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:pharmaconnect_catalog/pharmaconnect_catalog.dart';
 import 'package:pharmaconnect_design_system/pharmaconnect_design_system.dart';
 
+import 'doctor_catalog_pages.dart';
+
 const ProductListRequest _officialCatalogHomeRequest = ProductListRequest();
 
 String _officialProductDetailLocation(String productId) =>
@@ -58,7 +60,7 @@ class MobileOfficialCatalogEntryPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const _OfficialCatalogHome();
+    return const DoctorCatalogHomePage();
   }
 }
 
@@ -2058,7 +2060,7 @@ class _WorkflowStatusPill extends StatelessWidget {
   }
 }
 
-class MobileOfficialCatalogProductDetailPage extends ConsumerWidget {
+class MobileOfficialCatalogProductDetailPage extends StatelessWidget {
   const MobileOfficialCatalogProductDetailPage({
     required this.productId,
     super.key,
@@ -2067,206 +2069,8 @@ class MobileOfficialCatalogProductDetailPage extends ConsumerWidget {
   final String productId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final String normalizedProductId = productId.trim();
-    final AsyncValue<ProductDetail>? detail = normalizedProductId.isEmpty
-        ? null
-        : ref.watch(officialProductDetailProvider(normalizedProductId));
-
-    return Scaffold(
-      backgroundColor: _OfficialCatalogHome._background,
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (BuildContext context, BoxConstraints constraints) {
-            final double horizontalPadding = constraints.maxWidth < 380
-                ? PharmaConnectSpacing.medium
-                : PharmaConnectSpacing.large;
-            return SingleChildScrollView(
-              padding: EdgeInsets.fromLTRB(
-                horizontalPadding,
-                PharmaConnectSpacing.medium,
-                horizontalPadding,
-                40,
-              ),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 720),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      const _DetailTopBar(),
-                      const SizedBox(height: PharmaConnectSpacing.large),
-                      if (detail == null)
-                        const _CatalogStateCard(
-                          icon: Icons.search_off_rounded,
-                          accent: Color(0xFFFF9B8D),
-                          title: 'Product not found',
-                          subtitle:
-                              'This official catalog entry could not be opened safely.',
-                        )
-                      else
-                        _OfficialProductDetailContent(detail: detail),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        ),
-      ),
-    );
-  }
-}
-
-class _DetailTopBar extends StatelessWidget {
-  const _DetailTopBar();
-
-  @override
   Widget build(BuildContext context) {
-    return Row(
-      children: <Widget>[
-        InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: () =>
-              context.canPop() ? context.pop() : context.go('/catalog'),
-          child: Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: _OfficialCatalogHome._surface,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
-            ),
-            child: const Icon(
-              Icons.arrow_back_rounded,
-              color: Colors.white,
-              size: 22,
-            ),
-          ),
-        ),
-        const SizedBox(width: 14),
-        const Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text(
-                'Official product detail',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -0.3,
-                ),
-              ),
-              SizedBox(height: 3),
-              Text(
-                'Official catalog information',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: _OfficialCatalogHome._mutedText,
-                  fontSize: 13,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _OfficialProductDetailContent extends StatelessWidget {
-  const _OfficialProductDetailContent({required this.detail});
-
-  final AsyncValue<ProductDetail> detail;
-
-  @override
-  Widget build(BuildContext context) {
-    if (detail.hasError) {
-      return const _CatalogStateCard(
-        icon: Icons.error_outline_rounded,
-        accent: Color(0xFFFF9B8D),
-        title: 'Product detail could not load',
-        subtitle: 'Please try again or return to the catalog.',
-      );
-    }
-
-    if (detail.isLoading) {
-      return const _CatalogStateCard(
-        icon: Icons.sync_rounded,
-        accent: Color(0xFF35C9B7),
-        title: 'Loading product detail',
-        subtitle: 'Fetching the official catalog entry for this session.',
-      );
-    }
-
-    if (!detail.hasValue) {
-      return const _CatalogStateCard(
-        icon: Icons.search_off_rounded,
-        accent: Color(0xFF8C7CFF),
-        title: 'Product not found',
-        subtitle: 'This official catalog entry is not ready to display.',
-      );
-    }
-
-    final ProductDetail product = detail.requireValue;
-    final _ProductDetailDisplayData data = _ProductDetailDisplayData.fromDetail(
-      product,
-    );
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        _DetailHeroCard(data: data),
-        const SizedBox(height: 18),
-        _DetailInfoSection(
-          title: 'Product basics',
-          icon: Icons.medication_outlined,
-          rows: <_DetailInfoRow>[
-            _DetailInfoRow('Dosage form', data.dosageForm),
-            _DetailInfoRow('Strength', data.strength),
-            _DetailInfoRow('Route', data.route),
-            _DetailInfoRow('Package', data.packSize),
-          ],
-        ),
-        if (data.composition.isNotEmpty) ...<Widget>[
-          const SizedBox(height: 14),
-          _DetailTextSection(
-            title: 'Composition',
-            icon: Icons.science_outlined,
-            items: data.composition,
-          ),
-        ],
-        if (data.marketRows.isNotEmpty) ...<Widget>[
-          const SizedBox(height: 14),
-          _DetailInfoSection(
-            title: 'Iraq market information',
-            icon: Icons.verified_outlined,
-            rows: data.marketRows,
-          ),
-        ],
-        if (data.clinicalRows.isNotEmpty) ...<Widget>[
-          const SizedBox(height: 14),
-          _DetailInfoSection(
-            title: 'Clinical information',
-            icon: Icons.health_and_safety_outlined,
-            caption: 'Official catalog information',
-            rows: data.clinicalRows,
-          ),
-        ],
-        if (data.metadataRows.isNotEmpty) ...<Widget>[
-          const SizedBox(height: 14),
-          _DetailInfoSection(
-            title: 'Media and brochure metadata',
-            icon: Icons.perm_media_outlined,
-            rows: data.metadataRows,
-          ),
-        ],
-      ],
-    );
+    return DoctorCatalogProductDetailPage(productId: productId);
   }
 }
 
@@ -3202,13 +3006,11 @@ class _DetailInfoSection extends StatelessWidget {
     required this.title,
     required this.icon,
     required this.rows,
-    this.caption,
   });
 
   final String title;
   final IconData icon;
   final List<_DetailInfoRow> rows;
-  final String? caption;
 
   @override
   Widget build(BuildContext context) {
@@ -3232,65 +3034,10 @@ class _DetailInfoSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           _DetailSectionTitle(title: title, icon: icon),
-          if (caption != null) ...<Widget>[
-            const SizedBox(height: 6),
-            Text(
-              caption!,
-              style: const TextStyle(
-                color: Color(0xFF35C9B7),
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
           const SizedBox(height: 14),
           for (int index = 0; index < visibleRows.length; index++) ...<Widget>[
             if (index > 0) const SizedBox(height: 12),
             _DetailRow(row: visibleRows[index]),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _DetailTextSection extends StatelessWidget {
-  const _DetailTextSection({
-    required this.title,
-    required this.icon,
-    required this.items,
-  });
-
-  final String title;
-  final IconData icon;
-  final List<String> items;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: _OfficialCatalogHome._surfaceSoft,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          _DetailSectionTitle(title: title, icon: icon),
-          const SizedBox(height: 14),
-          for (final String item in items) ...<Widget>[
-            Text(
-              item,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 13,
-                height: 1.4,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            if (item != items.last) const SizedBox(height: 8),
           ],
         ],
       ),
