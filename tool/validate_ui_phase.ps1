@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-  [ValidateSet('design-system', 'auth-ui', 'doctor-catalog-ui', 'custom')]
+  [ValidateSet('design-system', 'auth-ui', 'doctor-catalog-ui', 'company-catalog-ui', 'custom')]
   [string]$Mode = 'design-system',
   [string[]]$FormatPath = @(),
   [string[]]$AnalyzePath = @(),
@@ -54,6 +54,12 @@ $doctorCatalogUiFiles = @(
   'apps/mobile/lib/features/catalog/presentation/doctor_catalog_pages.dart',
   'apps/mobile/test/catalog_home_test.dart',
   'apps/mobile/test/catalog_product_detail_test.dart',
+  'apps/mobile/test/auth_routing_test.dart'
+)
+
+$companyCatalogUiFiles = @(
+  'apps/mobile/lib/features/catalog/presentation/catalog_entry_pages.dart',
+  'apps/mobile/test/company_catalog_test.dart',
   'apps/mobile/test/auth_routing_test.dart'
 )
 
@@ -148,6 +154,23 @@ if ($Mode -eq 'design-system') {
     flutter test --no-pub apps/mobile/test/catalog_product_detail_test.dart
   }
   Invoke-ValidationStage 'Mobile catalog access routing tests' {
+    flutter test --no-pub apps/mobile/test/auth_routing_test.dart
+  }
+} elseif ($Mode -eq 'company-catalog-ui') {
+  if ($FormatPath.Count -eq 0) {
+    $FormatPath = $companyCatalogUiFiles
+  }
+
+  Invoke-ValidationStage 'Company catalog UI formatting verification' {
+    dart format --output=none --set-exit-if-changed @FormatPath
+  }
+  Invoke-ValidationStage 'Company catalog presentation analysis' {
+    flutter analyze --no-pub apps/mobile/lib/features/catalog/presentation/catalog_entry_pages.dart
+  }
+  Invoke-ValidationStage 'Company catalog widget tests' {
+    flutter test --no-pub apps/mobile/test/company_catalog_test.dart
+  }
+  Invoke-ValidationStage 'Mobile company catalog access routing tests' {
     flutter test --no-pub apps/mobile/test/auth_routing_test.dart
   }
 } else {
