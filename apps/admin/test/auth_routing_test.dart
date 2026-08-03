@@ -74,6 +74,25 @@ void main() {
     );
   });
 
+  test('authenticated administrator defaults to catalog review queue', () {
+    expect(
+      adminAuthRedirect(
+        location: adminAuthenticatedPath,
+        authState: authenticated,
+        principal: const AsyncData(
+          SessionPrincipal(
+            kind: SessionPrincipalKind.administrator,
+            profile: null,
+          ),
+        ),
+        catalogAccess: const AsyncData(
+          CatalogAccessState(CatalogAudience.administrator),
+        ),
+      ),
+      adminCatalogReviewPath,
+    );
+  });
+
   test('catalog review denies unauthorized and non-admin access', () {
     expect(
       adminAuthRedirect(
