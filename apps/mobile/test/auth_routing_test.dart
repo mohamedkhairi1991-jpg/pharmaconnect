@@ -176,6 +176,33 @@ void main() {
     );
   });
 
+  test('company sign in resolves to the company catalog', () {
+    const AsyncValue<SessionPrincipal?> companyPrincipal = AsyncData(
+      SessionPrincipal(kind: SessionPrincipalKind.companyUser, profile: null),
+    );
+
+    expect(
+      mobileAuthRedirect(
+        location: mobileSignInPath,
+        authState: authenticated,
+        principal: companyPrincipal,
+        catalogAccess: const AsyncLoading<CatalogAccessState>(),
+      ),
+      mobileSessionLoadingPath,
+    );
+    expect(
+      mobileAuthRedirect(
+        location: mobileSessionLoadingPath,
+        authState: authenticated,
+        principal: companyPrincipal,
+        catalogAccess: const AsyncData(
+          CatalogAccessState(CatalogAudience.companyWorkflow),
+        ),
+      ),
+      mobileCompanyCatalogPath,
+    );
+  });
+
   test('company catalog denies suspended or unauthorized access', () {
     expect(
       mobileAuthRedirect(

@@ -224,6 +224,24 @@ String? mobileAuthRedirect({
         : mobileOfficialCatalogPath;
   }
 
+  if (principalKind == SessionPrincipalKind.companyUser) {
+    final AsyncValue<CatalogAccessState> access =
+        catalogAccess ?? const AsyncLoading<CatalogAccessState>();
+    if (access.isLoading) {
+      return location == mobileSessionLoadingPath
+          ? null
+          : mobileSessionLoadingPath;
+    }
+    if (access.hasError || !access.requireValue.canReadCompanyWorkflow) {
+      return location == mobileAccountUnavailablePath
+          ? null
+          : mobileAccountUnavailablePath;
+    }
+    return location == mobileCompanyCatalogPath
+        ? null
+        : mobileCompanyCatalogPath;
+  }
+
   return location == mobileAuthenticatedPath ? null : mobileAuthenticatedPath;
 }
 
