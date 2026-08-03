@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-  [ValidateSet('design-system', 'auth-ui', 'doctor-catalog-ui', 'company-catalog-ui', 'custom')]
+  [ValidateSet('design-system', 'auth-ui', 'doctor-catalog-ui', 'company-catalog-ui', 'admin-review-ui', 'custom')]
   [string]$Mode = 'design-system',
   [string[]]$FormatPath = @(),
   [string[]]$AnalyzePath = @(),
@@ -61,6 +61,12 @@ $companyCatalogUiFiles = @(
   'apps/mobile/lib/features/catalog/presentation/catalog_entry_pages.dart',
   'apps/mobile/test/company_catalog_test.dart',
   'apps/mobile/test/auth_routing_test.dart'
+)
+
+$adminReviewUiFiles = @(
+  'apps/admin/lib/features/catalog/presentation/catalog_review_entry_page.dart',
+  'apps/admin/test/catalog_review_test.dart',
+  'apps/admin/test/auth_routing_test.dart'
 )
 
 function Invoke-ValidationStage {
@@ -172,6 +178,23 @@ if ($Mode -eq 'design-system') {
   }
   Invoke-ValidationStage 'Mobile company catalog access routing tests' {
     flutter test --no-pub apps/mobile/test/auth_routing_test.dart
+  }
+} elseif ($Mode -eq 'admin-review-ui') {
+  if ($FormatPath.Count -eq 0) {
+    $FormatPath = $adminReviewUiFiles
+  }
+
+  Invoke-ValidationStage 'Admin review UI formatting verification' {
+    dart format --output=none --set-exit-if-changed @FormatPath
+  }
+  Invoke-ValidationStage 'Admin review presentation analysis' {
+    flutter analyze --no-pub apps/admin/lib/features/catalog/presentation/catalog_review_entry_page.dart
+  }
+  Invoke-ValidationStage 'Admin review widget tests' {
+    flutter test --no-pub apps/admin/test/catalog_review_test.dart
+  }
+  Invoke-ValidationStage 'Admin catalog access routing tests' {
+    flutter test --no-pub apps/admin/test/auth_routing_test.dart
   }
 } else {
   if (

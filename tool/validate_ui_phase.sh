@@ -88,6 +88,12 @@ COMPANY_CATALOG_UI_FILES=(
   "apps/mobile/test/auth_routing_test.dart"
 )
 
+ADMIN_REVIEW_UI_FILES=(
+  "apps/admin/lib/features/catalog/presentation/catalog_review_entry_page.dart"
+  "apps/admin/test/catalog_review_test.dart"
+  "apps/admin/test/auth_routing_test.dart"
+)
+
 run_stage() {
   CURRENT_STAGE="$1"
   shift
@@ -164,6 +170,20 @@ elif [[ "${MODE}" == "company-catalog-ui" ]]; then
     flutter test --no-pub apps/mobile/test/company_catalog_test.dart
   run_stage "Mobile company catalog access routing tests" \
     flutter test --no-pub apps/mobile/test/auth_routing_test.dart
+elif [[ "${MODE}" == "admin-review-ui" ]]; then
+  if ((${#FORMAT_PATHS[@]} == 0)); then
+    FORMAT_PATHS=("${ADMIN_REVIEW_UI_FILES[@]}")
+  fi
+
+  run_stage "Admin review UI formatting verification" \
+    dart format --output=none --set-exit-if-changed "${FORMAT_PATHS[@]}"
+  run_stage "Admin review presentation analysis" \
+    flutter analyze --no-pub \
+      apps/admin/lib/features/catalog/presentation/catalog_review_entry_page.dart
+  run_stage "Admin review widget tests" \
+    flutter test --no-pub apps/admin/test/catalog_review_test.dart
+  run_stage "Admin catalog access routing tests" \
+    flutter test --no-pub apps/admin/test/auth_routing_test.dart
 elif [[ "${MODE}" == "custom" ]]; then
   if (
     (${#FORMAT_PATHS[@]} == 0) &&
