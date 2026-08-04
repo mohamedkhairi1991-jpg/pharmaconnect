@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pharmaconnect_catalog/pharmaconnect_catalog.dart';
 import 'package:pharmaconnect_design_system/pharmaconnect_design_system.dart';
 
+const double _adminReviewWideBreakpoint = 900;
+
 class AdminCatalogReviewEntryPage extends ConsumerWidget {
   const AdminCatalogReviewEntryPage({super.key});
 
@@ -13,13 +15,28 @@ class AdminCatalogReviewEntryPage extends ConsumerWidget {
     );
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Catalog review queue')),
+      backgroundColor: PharmaConnectColors.canvas,
+      appBar: AppBar(
+        toolbarHeight: 72,
+        titleSpacing: PharmaConnectSpacing.medium,
+        title: const _AdminReviewAppBarTitle(),
+        actions: const <Widget>[
+          Padding(
+            padding: EdgeInsets.only(right: PharmaConnectSpacing.medium),
+            child: _AdminWorkspaceBadge(),
+          ),
+        ],
+      ),
       body: SafeArea(
         child: LayoutBuilder(
           builder: (BuildContext context, BoxConstraints constraints) {
-            final double horizontalPadding = constraints.maxWidth < 640
+            final bool isWide =
+                constraints.maxWidth >= _adminReviewWideBreakpoint;
+            final double horizontalPadding = constraints.maxWidth < 380
+                ? PharmaConnectSpacing.compact
+                : constraints.maxWidth < 720
                 ? PharmaConnectSpacing.medium
-                : PharmaConnectSpacing.large;
+                : PharmaConnectSpacing.xLarge;
             return SingleChildScrollView(
               padding: EdgeInsets.fromLTRB(
                 horizontalPadding,
@@ -29,13 +46,13 @@ class AdminCatalogReviewEntryPage extends ConsumerWidget {
               ),
               child: Center(
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 960),
+                  constraints: const BoxConstraints(maxWidth: 1120),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: <Widget>[
-                      const _ReviewQueueHeader(),
+                      _ReviewQueueHeader(queue: queue),
                       const SizedBox(height: PharmaConnectSpacing.large),
-                      _ReviewQueueContent(queue: queue),
+                      _ReviewQueueContent(queue: queue, isWide: isWide),
                     ],
                   ),
                 ),
@@ -48,28 +65,206 @@ class AdminCatalogReviewEntryPage extends ConsumerWidget {
   }
 }
 
+class _AdminReviewAppBarTitle extends StatelessWidget {
+  const _AdminReviewAppBarTitle();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: PharmaConnectColors.primary,
+            borderRadius: BorderRadius.circular(PharmaConnectRadii.control),
+            border: Border.all(
+              color: PharmaConnectColors.linkFocus.withValues(alpha: 0.5),
+            ),
+          ),
+          child: const Icon(
+            Icons.health_and_safety_outlined,
+            color: PharmaConnectColors.primaryText,
+            size: 22,
+          ),
+        ),
+        const SizedBox(width: PharmaConnectSpacing.compact),
+        Flexible(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                'Pharamty',
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  color: PharmaConnectColors.primaryText,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.2,
+                ),
+              ),
+              Text(
+                'Catalog administration',
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: PharmaConnectColors.secondaryText,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AdminWorkspaceBadge extends StatelessWidget {
+  const _AdminWorkspaceBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: PharmaConnectSpacing.compact,
+        vertical: PharmaConnectSpacing.small,
+      ),
+      decoration: BoxDecoration(
+        color: PharmaConnectColors.unresolvedContainer,
+        borderRadius: BorderRadius.circular(PharmaConnectRadii.pill),
+        border: Border.all(color: PharmaConnectColors.unresolvedBorder),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          const Icon(
+            Icons.admin_panel_settings_outlined,
+            size: 16,
+            color: PharmaConnectColors.linkFocus,
+          ),
+          const SizedBox(width: PharmaConnectSpacing.small),
+          Text(
+            'Admin',
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: PharmaConnectColors.linkFocus,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _ReviewQueueHeader extends StatelessWidget {
-  const _ReviewQueueHeader();
+  const _ReviewQueueHeader({required this.queue});
+
+  final AsyncValue<List<ProductSummary>> queue;
 
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    return Card(
+    final String queueCount = queue.hasValue
+        ? queue.requireValue.length.toString()
+        : '—';
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: <Color>[
+            PharmaConnectColors.deepBlue,
+            PharmaConnectColors.primary,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(PharmaConnectRadii.dialog),
+        border: Border.all(color: PharmaConnectColors.unresolvedBorder),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(PharmaConnectSpacing.large),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        padding: const EdgeInsets.all(PharmaConnectSpacing.xLarge),
+        child: Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: PharmaConnectSpacing.large,
+          runSpacing: PharmaConnectSpacing.large,
           children: <Widget>[
-            Text(
-              'Official catalog review',
-              style: theme.textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w700,
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 610),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    'OFFICIAL CATALOG GOVERNANCE',
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: PharmaConnectColors.primaryText,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.1,
+                    ),
+                  ),
+                  const SizedBox(height: PharmaConnectSpacing.small),
+                  Text(
+                    'Catalog review workspace',
+                    style: theme.textTheme.headlineMedium?.copyWith(
+                      color: PharmaConnectColors.primaryText,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  const SizedBox(height: PharmaConnectSpacing.small),
+                  Text(
+                    'Review submitted company products for the official professional catalog. Company-page publication remains separate.',
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      color: PharmaConnectColors.primaryText.withValues(
+                        alpha: 0.86,
+                      ),
+                      height: 1.45,
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: PharmaConnectSpacing.small),
-            Text(
-              'Submitted company products waiting for official catalog review.',
-              style: theme.textTheme.bodyMedium,
+            Container(
+              constraints: const BoxConstraints(minWidth: 168),
+              padding: const EdgeInsets.all(PharmaConnectSpacing.medium),
+              decoration: BoxDecoration(
+                color: PharmaConnectColors.canvas.withValues(alpha: 0.36),
+                borderRadius: BorderRadius.circular(PharmaConnectRadii.card),
+                border: Border.all(
+                  color: PharmaConnectColors.primaryText.withValues(alpha: 0.2),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    'SUBMITTED',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: PharmaConnectColors.primaryText.withValues(
+                        alpha: 0.76,
+                      ),
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.9,
+                    ),
+                  ),
+                  const SizedBox(height: PharmaConnectSpacing.xSmall),
+                  Text(
+                    queueCount,
+                    style: theme.textTheme.headlineMedium?.copyWith(
+                      color: PharmaConnectColors.primaryText,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  Text(
+                    'awaiting review',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: PharmaConnectColors.primaryText.withValues(
+                        alpha: 0.8,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -78,18 +273,25 @@ class _ReviewQueueHeader extends StatelessWidget {
   }
 }
 
-class _ReviewQueueContent extends StatelessWidget {
-  const _ReviewQueueContent({required this.queue});
+class _ReviewQueueContent extends ConsumerWidget {
+  const _ReviewQueueContent({required this.queue, required this.isWide});
 
   final AsyncValue<List<ProductSummary>> queue;
+  final bool isWide;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     if (queue.hasError) {
-      return const _ReviewQueueStateCard(
+      return _ReviewQueueStateCard(
         icon: Icons.error_outline,
         title: 'Review queue could not load',
-        message: 'Please try again later.',
+        message:
+            'The submitted-product queue is temporarily unavailable. No review data has been changed.',
+        presentation: PharmaConnectSemanticStatusMapper.error,
+        actionLabel: 'Retry',
+        onAction: () => ref.invalidate(
+          adminReviewQueueProvider(ProductLifecycleStatus.submitted),
+        ),
       );
     }
 
@@ -98,6 +300,8 @@ class _ReviewQueueContent extends StatelessWidget {
         icon: Icons.sync,
         title: 'Loading review queue',
         message: 'Fetching submitted products for this admin session.',
+        presentation: PharmaConnectSemanticStatusMapper.unresolved,
+        showProgress: true,
       );
     }
 
@@ -106,17 +310,82 @@ class _ReviewQueueContent extends StatelessWidget {
       return const _ReviewQueueStateCard(
         icon: Icons.fact_check_outlined,
         title: 'No submitted products',
-        message: 'Submitted catalog products will appear here.',
+        message:
+            'The official catalog queue is clear. Newly submitted products will appear here.',
+        presentation: PharmaConnectSemanticStatusMapper.neutral,
       );
     }
 
+    final Widget productCollection = isWide
+        ? GridView.builder(
+            key: const Key('admin-review-grid'),
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: products.length,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: PharmaConnectSpacing.medium,
+              mainAxisSpacing: PharmaConnectSpacing.medium,
+              mainAxisExtent: 252,
+            ),
+            itemBuilder: (BuildContext context, int index) =>
+                _ReviewQueueProductCard(product: products[index]),
+          )
+        : ListView.separated(
+            key: const Key('admin-review-list'),
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: products.length,
+            separatorBuilder: (BuildContext context, int index) =>
+                const SizedBox(height: PharmaConnectSpacing.medium),
+            itemBuilder: (BuildContext context, int index) =>
+                _ReviewQueueProductCard(product: products[index]),
+          );
+
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        for (int index = 0; index < products.length; index++)
-          Padding(
-            padding: EdgeInsets.only(top: index == 0 ? 0 : 12),
-            child: _ReviewQueueProductCard(product: products[index]),
-          ),
+        Row(
+          children: <Widget>[
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: PharmaConnectColors.unresolvedContainer,
+                borderRadius: BorderRadius.circular(PharmaConnectRadii.control),
+                border: Border.all(color: PharmaConnectColors.unresolvedBorder),
+              ),
+              child: const Icon(
+                Icons.fact_check_outlined,
+                color: PharmaConnectColors.linkFocus,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: PharmaConnectSpacing.compact),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    'Submitted products',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: PharmaConnectColors.primaryText,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  Text(
+                    '${products.length} record${products.length == 1 ? '' : 's'} require official catalog review',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: PharmaConnectColors.secondaryText,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: PharmaConnectSpacing.medium),
+        productCollection,
       ],
     );
   }
@@ -127,23 +396,58 @@ class _ReviewQueueStateCard extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.message,
+    required this.presentation,
+    this.actionLabel,
+    this.onAction,
+    this.showProgress = false,
   });
 
   final IconData icon;
   final String title;
   final String message;
+  final PharmaConnectStatusPresentation presentation;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+  final bool showProgress;
 
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    return Card(
+    return Container(
+      decoration: BoxDecoration(
+        color: PharmaConnectColors.surface,
+        borderRadius: BorderRadius.circular(PharmaConnectRadii.card),
+        border: Border.all(color: presentation.border),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(PharmaConnectSpacing.large),
-        child: Row(
+        padding: const EdgeInsets.all(PharmaConnectSpacing.xLarge),
+        child: Wrap(
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: PharmaConnectSpacing.medium,
+          runSpacing: PharmaConnectSpacing.medium,
           children: <Widget>[
-            Icon(icon, size: 32, color: theme.colorScheme.primary),
-            const SizedBox(width: PharmaConnectSpacing.medium),
-            Expanded(
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: presentation.container,
+                borderRadius: BorderRadius.circular(PharmaConnectRadii.card),
+                border: Border.all(color: presentation.border),
+              ),
+              alignment: Alignment.center,
+              child: showProgress
+                  ? SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        color: presentation.foreground,
+                      ),
+                    )
+                  : Icon(icon, size: 24, color: presentation.foreground),
+            ),
+            ConstrainedBox(
+              constraints: const BoxConstraints(minWidth: 220, maxWidth: 640),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
@@ -151,13 +455,25 @@ class _ReviewQueueStateCard extends StatelessWidget {
                     title,
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w700,
+                      color: PharmaConnectColors.primaryText,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(message),
+                  const SizedBox(height: PharmaConnectSpacing.xSmall),
+                  Text(
+                    message,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: PharmaConnectColors.secondaryText,
+                    ),
+                  ),
                 ],
               ),
             ),
+            if (actionLabel != null && onAction != null)
+              OutlinedButton.icon(
+                onPressed: onAction,
+                icon: const Icon(Icons.refresh),
+                label: Text(actionLabel!),
+              ),
           ],
         ),
       ),
@@ -176,7 +492,18 @@ class _ReviewQueueProductCard extends StatelessWidget {
     final _AdminProductSummaryDisplay data =
         _AdminProductSummaryDisplay.fromProduct(product);
 
-    return Card(
+    final PharmaConnectStatusPresentation presentation =
+        PharmaConnectSemanticStatusMapper.fromLifecycleValue(
+          product.status.databaseValue,
+        );
+
+    return Container(
+      key: Key('admin-review-card-${product.id}'),
+      decoration: BoxDecoration(
+        color: PharmaConnectColors.surface,
+        borderRadius: BorderRadius.circular(PharmaConnectRadii.card),
+        border: Border.all(color: PharmaConnectColors.subtleBorder),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(PharmaConnectSpacing.large),
         child: Column(
@@ -208,7 +535,7 @@ class _ReviewQueueProductCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: PharmaConnectSpacing.medium),
-                _StatusChip(label: data.status),
+                _StatusChip(label: data.status, presentation: presentation),
               ],
             ),
             const SizedBox(height: PharmaConnectSpacing.medium),
@@ -221,15 +548,18 @@ class _ReviewQueueProductCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: PharmaConnectSpacing.medium),
+            const Divider(),
+            const SizedBox(height: PharmaConnectSpacing.compact),
             Align(
               alignment: Alignment.centerRight,
               child: OutlinedButton.icon(
+                key: Key('admin-open-review-${product.id}'),
                 onPressed: () => showDialog<void>(
                   context: context,
                   builder: (BuildContext context) =>
                       _AdminProductReviewDialog(productId: product.id),
                 ),
-                icon: const Icon(Icons.open_in_new),
+                icon: const Icon(Icons.rate_review_outlined),
                 label: const Text('Open review'),
               ),
             ),
@@ -252,25 +582,71 @@ class _AdminProductReviewDialog extends ConsumerWidget {
         ? null
         : ref.watch(adminProductDetailProvider(normalizedProductId));
 
+    final Size viewport = MediaQuery.sizeOf(context);
+    final double dialogPadding = viewport.width < 520
+        ? PharmaConnectSpacing.medium
+        : PharmaConnectSpacing.large;
+
     return Dialog(
-      insetPadding: const EdgeInsets.all(PharmaConnectSpacing.medium),
+      backgroundColor: PharmaConnectColors.canvas,
+      insetPadding: EdgeInsets.all(
+        viewport.width < 520
+            ? PharmaConnectSpacing.small
+            : PharmaConnectSpacing.medium,
+      ),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 860),
+        constraints: BoxConstraints(
+          maxWidth: 920,
+          maxHeight: viewport.height * 0.92,
+        ),
         child: Padding(
-          padding: const EdgeInsets.all(PharmaConnectSpacing.large),
+          padding: EdgeInsets.all(dialogPadding),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  const Expanded(
-                    child: Text(
-                      'Product review detail',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w700,
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: PharmaConnectColors.unresolvedContainer,
+                      borderRadius: BorderRadius.circular(
+                        PharmaConnectRadii.control,
                       ),
+                      border: Border.all(
+                        color: PharmaConnectColors.unresolvedBorder,
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.rate_review_outlined,
+                      color: PharmaConnectColors.linkFocus,
+                    ),
+                  ),
+                  const SizedBox(width: PharmaConnectSpacing.compact),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          'Product review detail',
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(
+                                color: PharmaConnectColors.primaryText,
+                                fontWeight: FontWeight.w800,
+                              ),
+                        ),
+                        const SizedBox(height: PharmaConnectSpacing.xSmall),
+                        Text(
+                          'Official catalog assessment',
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: PharmaConnectColors.secondaryText,
+                              ),
+                        ),
+                      ],
                     ),
                   ),
                   IconButton(
@@ -289,6 +665,8 @@ class _AdminProductReviewDialog extends ConsumerWidget {
                           title: 'Product not found',
                           message:
                               'This review item could not be opened safely.',
+                          presentation:
+                              PharmaConnectSemanticStatusMapper.neutral,
                         )
                       : _AdminProductReviewDetailContent(detail: detail),
                 ),
@@ -313,6 +691,7 @@ class _AdminProductReviewDetailContent extends ConsumerWidget {
         icon: Icons.error_outline,
         title: 'Product detail could not load',
         message: 'Please try again later.',
+        presentation: PharmaConnectSemanticStatusMapper.error,
       );
     }
 
@@ -321,6 +700,8 @@ class _AdminProductReviewDetailContent extends ConsumerWidget {
         icon: Icons.sync,
         title: 'Loading product detail',
         message: 'Fetching official catalog review information.',
+        presentation: PharmaConnectSemanticStatusMapper.unresolved,
+        showProgress: true,
       );
     }
 
@@ -329,6 +710,7 @@ class _AdminProductReviewDetailContent extends ConsumerWidget {
         icon: Icons.search_off,
         title: 'Product not found',
         message: 'This submitted product is not ready to display.',
+        presentation: PharmaConnectSemanticStatusMapper.neutral,
       );
     }
 
@@ -405,7 +787,14 @@ class _ReviewDetailHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    return Card(
+    final PharmaConnectStatusPresentation presentation =
+        PharmaConnectSemanticStatusMapper.fromLifecycleValue(data.status);
+    return Container(
+      decoration: BoxDecoration(
+        color: PharmaConnectColors.surface,
+        borderRadius: BorderRadius.circular(PharmaConnectRadii.card),
+        border: Border.all(color: PharmaConnectColors.subtleBorder),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(PharmaConnectSpacing.large),
         child: Column(
@@ -414,18 +803,24 @@ class _ReviewDetailHeader extends StatelessWidget {
             Text(
               data.brandName,
               style: theme.textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w700,
+                color: PharmaConnectColors.primaryText,
+                fontWeight: FontWeight.w800,
               ),
             ),
             const SizedBox(height: 6),
-            Text(data.genericName, style: theme.textTheme.bodyLarge),
+            Text(
+              data.genericName,
+              style: theme.textTheme.bodyLarge?.copyWith(
+                color: PharmaConnectColors.secondaryText,
+              ),
+            ),
             const SizedBox(height: PharmaConnectSpacing.medium),
             Wrap(
               spacing: PharmaConnectSpacing.medium,
               runSpacing: PharmaConnectSpacing.small,
               children: <Widget>[
+                _StatusChip(label: data.status, presentation: presentation),
                 _MetadataText(label: 'Company', value: data.companyName),
-                _MetadataText(label: 'Status', value: data.status),
               ],
             ),
           ],
@@ -456,7 +851,12 @@ class _ReviewDetailSection extends StatelessWidget {
     }
 
     final ThemeData theme = Theme.of(context);
-    return Card(
+    return Container(
+      decoration: BoxDecoration(
+        color: PharmaConnectColors.surface,
+        borderRadius: BorderRadius.circular(PharmaConnectRadii.card),
+        border: Border.all(color: PharmaConnectColors.subtleBorder),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(PharmaConnectSpacing.large),
         child: Column(
@@ -464,12 +864,32 @@ class _ReviewDetailSection extends StatelessWidget {
           children: <Widget>[
             Row(
               children: <Widget>[
-                Icon(icon, color: theme.colorScheme.primary),
-                const SizedBox(width: PharmaConnectSpacing.small),
-                Text(
-                  title,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: PharmaConnectColors.unresolvedContainer,
+                    borderRadius: BorderRadius.circular(
+                      PharmaConnectRadii.control,
+                    ),
+                    border: Border.all(
+                      color: PharmaConnectColors.unresolvedBorder,
+                    ),
+                  ),
+                  child: Icon(
+                    icon,
+                    size: 19,
+                    color: PharmaConnectColors.linkFocus,
+                  ),
+                ),
+                const SizedBox(width: PharmaConnectSpacing.compact),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: PharmaConnectColors.primaryText,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ),
               ],
@@ -550,6 +970,7 @@ class _ReviewLifecycleActions extends ConsumerWidget {
         icon: Icons.lock_outline,
         title: 'Lifecycle actions unavailable',
         message: 'Review actions are only available for submitted products.',
+        presentation: PharmaConnectSemanticStatusMapper.neutral,
       );
     }
 
@@ -558,21 +979,41 @@ class _ReviewLifecycleActions extends ConsumerWidget {
     );
     final bool isWorking = lifecycle.isLoading;
 
-    return Card(
+    return Container(
+      decoration: BoxDecoration(
+        color: PharmaConnectColors.warningContainer,
+        borderRadius: BorderRadius.circular(PharmaConnectRadii.card),
+        border: Border.all(color: PharmaConnectColors.warningBorder),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(PharmaConnectSpacing.large),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Text(
-              'Lifecycle actions',
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            Row(
+              children: <Widget>[
+                const Icon(
+                  Icons.gavel_outlined,
+                  color: PharmaConnectColors.warning,
+                ),
+                const SizedBox(width: PharmaConnectSpacing.small),
+                Expanded(
+                  child: Text(
+                    'Review decision',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: PharmaConnectColors.primaryText,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: PharmaConnectSpacing.small),
-            const Text(
-              'Client checks are advisory. Server validation remains authoritative.',
+            Text(
+              'Publish or return this submitted record for changes. Server validation remains authoritative.',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: PharmaConnectColors.secondaryText,
+              ),
             ),
             const SizedBox(height: PharmaConnectSpacing.medium),
             Wrap(
@@ -580,6 +1021,7 @@ class _ReviewLifecycleActions extends ConsumerWidget {
               runSpacing: PharmaConnectSpacing.small,
               children: <Widget>[
                 FilledButton.icon(
+                  key: const Key('admin-publish-button'),
                   onPressed: isWorking
                       ? null
                       : () async {
@@ -613,8 +1055,13 @@ class _ReviewLifecycleActions extends ConsumerWidget {
                         },
                   icon: const Icon(Icons.check_circle_outline),
                   label: Text(isWorking ? 'Working...' : 'Publish'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: PharmaConnectColors.success,
+                    foregroundColor: PharmaConnectColors.tooltip,
+                  ),
                 ),
                 OutlinedButton.icon(
+                  key: const Key('admin-request-changes-button'),
                   onPressed: isWorking
                       ? null
                       : () async {
@@ -654,6 +1101,12 @@ class _ReviewLifecycleActions extends ConsumerWidget {
                         },
                   icon: const Icon(Icons.rate_review_outlined),
                   label: Text(isWorking ? 'Working...' : 'Request changes'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: PharmaConnectColors.warning,
+                    side: const BorderSide(
+                      color: PharmaConnectColors.warningBorder,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -691,21 +1144,41 @@ class _RequestChangesDialogState extends State<_RequestChangesDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Request changes'),
-      content: TextField(
-        controller: _controller,
-        minLines: 3,
-        maxLines: 5,
-        decoration: const InputDecoration(
-          labelText: 'Reason',
-          hintText: 'Explain what the company should change.',
-          border: OutlineInputBorder(),
+      icon: const Icon(
+        Icons.rate_review_outlined,
+        color: PharmaConnectColors.warning,
+      ),
+      title: const Text('Request product changes'),
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 480),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              'Give the company a clear, professional reason. A reason is required before this review decision can be sent.',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: PharmaConnectColors.secondaryText,
+              ),
+            ),
+            const SizedBox(height: PharmaConnectSpacing.medium),
+            TextField(
+              key: const Key('admin-request-changes-reason'),
+              controller: _controller,
+              minLines: 3,
+              maxLines: 5,
+              decoration: const InputDecoration(
+                labelText: 'Review reason',
+                hintText: 'Explain what the company should update.',
+              ),
+              onChanged: (String value) {
+                setState(() {
+                  _hasReason = value.trim().isNotEmpty;
+                });
+              },
+            ),
+          ],
         ),
-        onChanged: (String value) {
-          setState(() {
-            _hasReason = value.trim().isNotEmpty;
-          });
-        },
       ),
       actions: <Widget>[
         TextButton(
@@ -713,6 +1186,7 @@ class _RequestChangesDialogState extends State<_RequestChangesDialog> {
           child: const Text('Cancel'),
         ),
         FilledButton(
+          key: const Key('admin-confirm-request-changes-button'),
           onPressed: _hasReason
               ? () => Navigator.of(context).pop(_controller.text.trim())
               : null,
@@ -731,17 +1205,33 @@ final class _ReviewDetailRow {
 }
 
 class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.label});
+  const _StatusChip({required this.label, required this.presentation});
 
   final String label;
+  final PharmaConnectStatusPresentation presentation;
 
   @override
   Widget build(BuildContext context) {
-    final ColorScheme colorScheme = Theme.of(context).colorScheme;
-    return Chip(
-      label: Text(label),
-      backgroundColor: colorScheme.primaryContainer,
-      labelStyle: TextStyle(color: colorScheme.onPrimaryContainer),
+    return Semantics(
+      label: '${presentation.semanticCategory}: $label',
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: PharmaConnectSpacing.compact,
+          vertical: PharmaConnectSpacing.small,
+        ),
+        decoration: BoxDecoration(
+          color: presentation.container,
+          borderRadius: BorderRadius.circular(PharmaConnectRadii.pill),
+          border: Border.all(color: presentation.border),
+        ),
+        child: Text(
+          label,
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+            color: presentation.foreground,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ),
     );
   }
 }
@@ -765,7 +1255,9 @@ class _MetadataText extends StatelessWidget {
           TextSpan(text: value),
         ],
       ),
-      style: theme.textTheme.bodySmall,
+      style: theme.textTheme.bodySmall?.copyWith(
+        color: PharmaConnectColors.secondaryText,
+      ),
     );
   }
 }

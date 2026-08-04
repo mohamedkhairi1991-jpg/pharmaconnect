@@ -135,6 +135,7 @@ String? adminAuthRedirect({
 
   final bool isCatalogReviewTarget =
       location == adminCatalogReviewPath ||
+      location == adminAuthenticatedPath ||
       (location == adminSessionLoadingPath &&
           pendingCatalogLocation == adminCatalogReviewPath);
   if (isCatalogReviewTarget) {
@@ -157,5 +158,5 @@ String? adminAuthRedirect({
     return location == adminCatalogReviewPath ? null : adminCatalogReviewPath;
   }
 
-  return location == adminAuthenticatedPath ? null : adminAuthenticatedPath;
+  return adminCatalogReviewPath;
 }

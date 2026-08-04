@@ -1,11 +1,11 @@
 {
-    "name": "PharmaConnect Admin",
-    "short_name": "PharmaConnect",
+    "name": "Pharamty Admin",
+    "short_name": "Pharamty",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "PharmaConnect administration portal.",
+    "description": "Pharamty official catalog administration portal.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
