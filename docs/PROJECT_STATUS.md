@@ -1,6 +1,6 @@
 # PharmaConnect / Pharamty Project Status
 
-Last canonical update: Phase 6D.3A6
+Last canonical update: Secure catalog media foundation
 
 ## Identity and environment
 
@@ -10,8 +10,8 @@ Last canonical update: Phase 6D.3A6
 | Technical/internal name | PharmaConnect |
 | Backend demo project | PharmaConnect Demo |
 | Supabase project reference | `oymnmcqzxmnshsknrgam` |
-| Current branch | `feature/pharamty-admin-review-ui` |
-| Current phase | Phase 6D.3A6 Pharamty admin catalog review UI |
+| Current branch | `feature/secure-catalog-media-foundation` |
+| Current phase | Secure private storage foundation for official catalog media |
 | Merge status | No merge approved |
 
 Technical identifiers remain PharmaConnect unless a dedicated rename phase is
@@ -31,18 +31,18 @@ explicitly approved.
 The demo environment uses fake, non-production data. It must not contain real
 doctor, company, patient, credential, or commercial information.
 
-## Active UI work
+## Active work
 
-Phase 6D.3A2 through Phase 6D.3A5 are merged and verified. Phase 6D.3A6 applies
-the shared Pharamty visual identity to the admin official-catalog review queue,
-submitted product detail, review decisions, feedback dialog, and responsive
-web layouts while preserving admin access, lifecycle controllers, and the
-separation from company-page publication.
+The doctor, company, and admin catalog UI phases are merged and verified. The
+complete company submission, admin review, request-changes, resubmission,
+publication, and doctor discovery cycle has also been verified against the
+non-production demo environment.
 
-Phase 6D.3A6 remains open until scoped validation, preview, GitHub Actions, and
-the separate diff review are complete. GitHub Actions remains the authoritative
-cloud validation environment. The scoped formatter, analyzer, admin review
-widget tests, admin access-routing tests, and whitespace checks pass locally.
+The active phase adds private Supabase Storage buckets and least-privilege
+object policies for official product images, package images, and PDF brochure
+files. It does not yet add upload UI or enforce media as a publication
+requirement. Publication enforcement must follow only after the upload and
+review workflows are usable and validated.
 
 Docker is not required for ordinary UI work. Normal UI validation must not run
 Supabase, migrations, seeds, or database services.
@@ -64,8 +64,10 @@ The next planned feature phase will be selected after Phase 6D.3A6 closes.
 | Phase 6D.3A4 GitHub Actions validation | Verified |
 | Pharamty company catalog UI | Verified |
 | Phase 6D.3A5 GitHub Actions validation | Verified |
-| Pharamty admin catalog review UI | In progress |
-| Phase 6D.3A6 GitHub Actions validation | In progress |
+| Pharamty admin catalog review UI | Verified |
+| Phase 6D.3A6 GitHub Actions validation | Verified |
+| End-to-end official catalog lifecycle | Verified |
+| Secure catalog storage foundation | In progress |
 | Scoped local Flutter validation | Verified |
 | Pull Request merge | Blocked — user approval required |
 
