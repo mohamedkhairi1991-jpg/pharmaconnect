@@ -9,6 +9,7 @@ environment:
 resolution: workspace
 
 dependencies:
+  file_selector: ^1.1.0
   flutter:
     sdk: flutter
   flutter_localizations:

@@ -74,6 +74,19 @@ abstract interface class CompanyCatalogRepository {
     ProductBrochureMetadataCommand command,
   );
 
+  Future<ProductDetail> uploadProductMedia({
+    required String productId,
+    required ProductMediaType type,
+    required CatalogUploadFile file,
+  });
+
+  Future<ProductDetail> uploadBrochure({
+    required String productId,
+    required ContentLocale locale,
+    required String title,
+    required CatalogUploadFile file,
+  });
+
   Future<ProductDetail> submitForReview(String productId);
 
   Future<ProductDetail> withdrawSubmission(String productId);

@@ -1,3 +1,6 @@
+import 'dart:typed_data';
+
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -2055,27 +2058,10 @@ class _DraftEditShell extends ConsumerWidget {
           ),
           const SizedBox(height: 14),
           _CompletionSectionCard(
-            title: 'Media and brochure metadata',
+            title: 'Product media and brochure',
             icon: Icons.perm_media_outlined,
             children: <Widget>[
-              Text(
-                product.media.isEmpty
-                    ? 'No media metadata recorded.'
-                    : '${product.media.length} media metadata item(s) recorded.',
-                style: PharmaConnectTypography.supporting,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                product.brochures.isEmpty
-                    ? 'No brochure metadata recorded.'
-                    : '${product.brochures.length} brochure metadata item(s) recorded.',
-                style: PharmaConnectTypography.supporting,
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Upload, download, and signed URL workflows are intentionally not part of this phase.',
-                style: PharmaConnectTypography.auxiliary,
-              ),
+              _CatalogMediaUploadSection(product: product),
             ],
           ),
           const SizedBox(height: 18),
@@ -2102,6 +2088,238 @@ class _DraftEditShell extends ConsumerWidget {
       ),
     );
   }
+}
+
+class _CatalogMediaUploadSection extends ConsumerStatefulWidget {
+  const _CatalogMediaUploadSection({required this.product});
+
+  final ProductDetail product;
+
+  @override
+  ConsumerState<_CatalogMediaUploadSection> createState() =>
+      _CatalogMediaUploadSectionState();
+}
+
+class _CatalogMediaUploadSectionState
+    extends ConsumerState<_CatalogMediaUploadSection> {
+  bool _isUploading = false;
+
+  Future<void> _uploadImage(ProductMediaType type) async {
+    final XFile? selected = await openFile(
+      acceptedTypeGroups: const <XTypeGroup>[
+        XTypeGroup(
+          label: 'Catalog images',
+          extensions: <String>['jpg', 'jpeg', 'png', 'webp'],
+          mimeTypes: <String>['image/jpeg', 'image/png', 'image/webp'],
+          uniformTypeIdentifiers: <String>[
+            'public.jpeg',
+            'public.png',
+            'org.webmproject.webp',
+          ],
+        ),
+      ],
+    );
+    if (selected == null) {
+      return;
+    }
+    final String? mimeType = _imageMimeType(selected.name);
+    await _upload(
+      selected,
+      mimeType: mimeType,
+      operation: (CatalogUploadFile file) => ref
+          .read(companyCatalogMutationController.notifier)
+          .uploadProductMedia(
+            productId: widget.product.id,
+            type: type,
+            file: file,
+          ),
+      successMessage: type == ProductMediaType.productImage
+          ? 'Product image uploaded.'
+          : 'Package image uploaded.',
+    );
+  }
+
+  Future<void> _uploadBrochure() async {
+    final XFile? selected = await openFile(
+      acceptedTypeGroups: const <XTypeGroup>[
+        XTypeGroup(
+          label: 'PDF brochure',
+          extensions: <String>['pdf'],
+          mimeTypes: <String>['application/pdf'],
+          uniformTypeIdentifiers: <String>['com.adobe.pdf'],
+        ),
+      ],
+    );
+    if (selected == null) {
+      return;
+    }
+    await _upload(
+      selected,
+      mimeType: 'application/pdf',
+      operation: (CatalogUploadFile file) => ref
+          .read(companyCatalogMutationController.notifier)
+          .uploadBrochure(
+            productId: widget.product.id,
+            locale: ContentLocale.english,
+            title: _fileTitle(selected.name),
+            file: file,
+          ),
+      successMessage: 'English brochure uploaded.',
+    );
+  }
+
+  Future<void> _upload(
+    XFile selected, {
+    required String? mimeType,
+    required Future<ProductDetail> Function(CatalogUploadFile file) operation,
+    required String successMessage,
+  }) async {
+    if (_isUploading || mimeType == null) {
+      _showMessage('The selected file could not be read safely.');
+      return;
+    }
+    setState(() {
+      _isUploading = true;
+    });
+    try {
+      final Uint8List bytes = await selected.readAsBytes();
+      await operation(
+        CatalogUploadFile(
+          fileName: selected.name,
+          mimeType: mimeType,
+          bytes: bytes,
+        ),
+      );
+      if (mounted) {
+        _showMessage(successMessage);
+      }
+    } catch (_) {
+      if (mounted) {
+        _showMessage('The file could not be uploaded. Check its type and size.');
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUploading = false;
+        });
+      }
+    }
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bool hasProductImage = widget.product.media.any(
+      (ProductMediaMetadata item) =>
+          item.type == ProductMediaType.productImage,
+    );
+    final bool hasPackageImage = widget.product.media.any(
+      (ProductMediaMetadata item) =>
+          item.type == ProductMediaType.packageImage,
+    );
+    final bool hasBrochure = widget.product.brochures.any(
+      (ProductBrochureMetadata item) =>
+          item.locale == ContentLocale.english && item.isCurrent,
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        _UploadStatusRow(
+          label: 'Primary product image',
+          isRecorded: hasProductImage,
+          actionLabel: hasProductImage ? 'Replace image' : 'Upload image',
+          onPressed: _isUploading
+              ? null
+              : () => _uploadImage(ProductMediaType.productImage),
+        ),
+        const SizedBox(height: 12),
+        _UploadStatusRow(
+          label: 'Primary package image',
+          isRecorded: hasPackageImage,
+          actionLabel: hasPackageImage ? 'Replace image' : 'Upload image',
+          onPressed: _isUploading
+              ? null
+              : () => _uploadImage(ProductMediaType.packageImage),
+        ),
+        const SizedBox(height: 12),
+        _UploadStatusRow(
+          label: 'Current English PDF brochure',
+          isRecorded: hasBrochure,
+          actionLabel: hasBrochure ? 'Replace PDF' : 'Upload PDF',
+          onPressed: _isUploading ? null : _uploadBrochure,
+        ),
+        if (_isUploading) ...<Widget>[
+          const SizedBox(height: 14),
+          const LinearProgressIndicator(),
+          const SizedBox(height: 8),
+          const Text(
+            'Uploading securely...',
+            style: PharmaConnectTypography.auxiliary,
+          ),
+        ],
+        const SizedBox(height: 12),
+        const Text(
+          'Images: JPEG, PNG, or WebP up to 10 MiB. Brochure: PDF up to 25 MiB.',
+          style: PharmaConnectTypography.auxiliary,
+        ),
+      ],
+    );
+  }
+}
+
+class _UploadStatusRow extends StatelessWidget {
+  const _UploadStatusRow({
+    required this.label,
+    required this.isRecorded,
+    required this.actionLabel,
+    required this.onPressed,
+  });
+
+  final String label;
+  final bool isRecorded;
+  final String actionLabel;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: <Widget>[
+        Icon(
+          isRecorded ? Icons.check_circle_outline : Icons.circle_outlined,
+          color: isRecorded
+              ? PharmaConnectColors.success
+              : PharmaConnectColors.secondaryText,
+          size: 20,
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(label, style: PharmaConnectTypography.supporting),
+        ),
+        const SizedBox(width: 10),
+        OutlinedButton(onPressed: onPressed, child: Text(actionLabel)),
+      ],
+    );
+  }
+}
+
+String? _imageMimeType(String fileName) => switch (
+  fileName.split('.').last.toLowerCase()
+) {
+  'jpg' || 'jpeg' => 'image/jpeg',
+  'png' => 'image/png',
+  'webp' => 'image/webp',
+  _ => null,
+};
+
+String _fileTitle(String fileName) {
+  final int extensionIndex = fileName.lastIndexOf('.');
+  return extensionIndex > 0 ? fileName.substring(0, extensionIndex) : fileName;
 }
 
 class _CompletionSectionCard extends StatelessWidget {

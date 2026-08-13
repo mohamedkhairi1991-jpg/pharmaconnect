@@ -15,6 +15,12 @@ final Provider<CatalogDataSource> _catalogDataSourceProvider =
       (Ref ref) => SupabaseCatalogDataSource(ref.watch(supabaseClientProvider)),
     );
 
+final Provider<CatalogStorageDataSource> _catalogStorageDataSourceProvider =
+    Provider<CatalogStorageDataSource>(
+      (Ref ref) =>
+          SupabaseCatalogStorageDataSource(ref.watch(supabaseClientProvider)),
+    );
+
 final Provider<CatalogAccessRepository> catalogAccessRepositoryProvider =
     Provider<CatalogAccessRepository>(
       (Ref ref) => SupabaseCatalogAccessRepository(
@@ -33,6 +39,7 @@ final Provider<CompanyCatalogRepository> companyCatalogRepositoryProvider =
     Provider<CompanyCatalogRepository>(
       (Ref ref) => SupabaseCompanyCatalogRepository(
         ref.watch(_catalogDataSourceProvider),
+        ref.watch(_catalogStorageDataSourceProvider),
       ),
     );
 

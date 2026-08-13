@@ -113,6 +113,34 @@ final class CompanyCatalogMutationController
     productId: command.productId,
   );
 
+  Future<ProductDetail> uploadProductMedia({
+    required String productId,
+    required ProductMediaType type,
+    required CatalogUploadFile file,
+  }) => _mutate(
+    () => ref
+        .read(companyCatalogRepositoryProvider)
+        .uploadProductMedia(productId: productId, type: type, file: file),
+    productId: productId,
+  );
+
+  Future<ProductDetail> uploadBrochure({
+    required String productId,
+    required ContentLocale locale,
+    required String title,
+    required CatalogUploadFile file,
+  }) => _mutate(
+    () => ref
+        .read(companyCatalogRepositoryProvider)
+        .uploadBrochure(
+          productId: productId,
+          locale: locale,
+          title: title,
+          file: file,
+        ),
+    productId: productId,
+  );
+
   Future<ProductDetail> submitForReview(String productId) => _mutate(
     () => ref.read(companyCatalogRepositoryProvider).submitForReview(productId),
     productId: productId,

@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../error/supabase_catalog_failure_mapper.dart';
@@ -28,6 +30,17 @@ abstract interface class CatalogDataSource {
   Future<Map<String, Object?>?> readMaybeSingle(CatalogReadRequest request);
 
   Future<Object?> callRpc(String name, Map<String, Object?> params);
+}
+
+abstract interface class CatalogStorageDataSource {
+  Future<void> uploadBinary({
+    required String bucket,
+    required String path,
+    required Uint8List bytes,
+    required String mimeType,
+  });
+
+  Future<void> remove({required String bucket, required String path});
 }
 
 final class SupabaseCatalogDataSource implements CatalogDataSource {
@@ -79,4 +92,33 @@ final class SupabaseCatalogDataSource implements CatalogDataSource {
   @override
   Future<Object?> callRpc(String name, Map<String, Object?> params) =>
       guardCatalogCall(() => _client.rpc<Object?>(name, params: params));
+}
+
+final class SupabaseCatalogStorageDataSource
+    implements CatalogStorageDataSource {
+  const SupabaseCatalogStorageDataSource(this._client);
+
+  final SupabaseClient _client;
+
+  @override
+  Future<void> uploadBinary({
+    required String bucket,
+    required String path,
+    required Uint8List bytes,
+    required String mimeType,
+  }) => guardCatalogCall(() async {
+    await _client.storage
+        .from(bucket)
+        .uploadBinary(
+          path,
+          bytes,
+          fileOptions: FileOptions(contentType: mimeType, upsert: false),
+        );
+  });
+
+  @override
+  Future<void> remove({required String bucket, required String path}) =>
+      guardCatalogCall(() async {
+        await _client.storage.from(bucket).remove(<String>[path]);
+      });
 }
