@@ -2060,9 +2060,7 @@ class _DraftEditShell extends ConsumerWidget {
           _CompletionSectionCard(
             title: 'Product media and brochure',
             icon: Icons.perm_media_outlined,
-            children: <Widget>[
-              _CatalogMediaUploadSection(product: product),
-            ],
+            children: <Widget>[_CatalogMediaUploadSection(product: product)],
           ),
           const SizedBox(height: 18),
           SizedBox(
@@ -2195,7 +2193,9 @@ class _CatalogMediaUploadSectionState
       }
     } catch (_) {
       if (mounted) {
-        _showMessage('The file could not be uploaded. Check its type and size.');
+        _showMessage(
+          'The file could not be uploaded. Check its type and size.',
+        );
       }
     } finally {
       if (mounted) {
@@ -2207,20 +2207,18 @@ class _CatalogMediaUploadSectionState
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
   Widget build(BuildContext context) {
     final bool hasProductImage = widget.product.media.any(
-      (ProductMediaMetadata item) =>
-          item.type == ProductMediaType.productImage,
+      (ProductMediaMetadata item) => item.type == ProductMediaType.productImage,
     );
     final bool hasPackageImage = widget.product.media.any(
-      (ProductMediaMetadata item) =>
-          item.type == ProductMediaType.packageImage,
+      (ProductMediaMetadata item) => item.type == ProductMediaType.packageImage,
     );
     final bool hasBrochure = widget.product.brochures.any(
       (ProductBrochureMetadata item) =>
@@ -2298,9 +2296,7 @@ class _UploadStatusRow extends StatelessWidget {
           size: 20,
         ),
         const SizedBox(width: 10),
-        Expanded(
-          child: Text(label, style: PharmaConnectTypography.supporting),
-        ),
+        Expanded(child: Text(label, style: PharmaConnectTypography.supporting)),
         const SizedBox(width: 10),
         OutlinedButton(onPressed: onPressed, child: Text(actionLabel)),
       ],
@@ -2308,14 +2304,13 @@ class _UploadStatusRow extends StatelessWidget {
   }
 }
 
-String? _imageMimeType(String fileName) => switch (
-  fileName.split('.').last.toLowerCase()
-) {
-  'jpg' || 'jpeg' => 'image/jpeg',
-  'png' => 'image/png',
-  'webp' => 'image/webp',
-  _ => null,
-};
+String? _imageMimeType(String fileName) =>
+    switch (fileName.split('.').last.toLowerCase()) {
+      'jpg' || 'jpeg' => 'image/jpeg',
+      'png' => 'image/png',
+      'webp' => 'image/webp',
+      _ => null,
+    };
 
 String _fileTitle(String fileName) {
   final int extensionIndex = fileName.lastIndexOf('.');
