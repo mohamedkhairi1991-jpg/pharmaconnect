@@ -416,6 +416,7 @@ class _CreateDraftSheet extends ConsumerStatefulWidget {
 class _CreateDraftSheetState extends ConsumerState<_CreateDraftSheet> {
   final TextEditingController _brandNameController = TextEditingController();
   ProductCategory _category = ProductCategory.prescriptionDrug;
+  String? _selectedGenericDrugId;
   String? _selectedDrugClassId;
   bool _isSubmitting = false;
 
@@ -443,6 +444,7 @@ class _CreateDraftSheetState extends ConsumerState<_CreateDraftSheet> {
             CreateProductDraftCommand(
               companyId: companyAccess.companyId,
               category: _category,
+              genericDrugId: _selectedGenericDrugId,
               drugClassId: drugClassId,
               englishBrandName: brandName,
             ),
@@ -479,14 +481,24 @@ class _CreateDraftSheetState extends ConsumerState<_CreateDraftSheet> {
     final AsyncValue<List<DrugClass>> drugClasses = ref.watch(
       catalogDrugClassesProvider,
     );
-    final bool isLoading = companyAccess.isLoading || drugClasses.isLoading;
-    final bool hasError = companyAccess.hasError || drugClasses.hasError;
+    final AsyncValue<List<GenericDrug>> genericDrugs = ref.watch(
+      catalogGenericDrugsProvider,
+    );
+    final bool isLoading =
+        companyAccess.isLoading ||
+        drugClasses.isLoading ||
+        genericDrugs.isLoading;
+    final bool hasError =
+        companyAccess.hasError || drugClasses.hasError || genericDrugs.hasError;
     final CatalogCompanyAccess? access = companyAccess.hasValue
         ? companyAccess.requireValue
         : null;
     final List<DrugClass> classes = drugClasses.hasValue
         ? drugClasses.requireValue
         : const <DrugClass>[];
+    final List<GenericDrug> generics = genericDrugs.hasValue
+        ? genericDrugs.requireValue
+        : const <GenericDrug>[];
     if (classes.isNotEmpty &&
         (_selectedDrugClassId == null ||
             !classes.any(
@@ -494,10 +506,19 @@ class _CreateDraftSheetState extends ConsumerState<_CreateDraftSheet> {
             ))) {
       _selectedDrugClassId = classes.first.id;
     }
+    if (generics.isNotEmpty &&
+        (_selectedGenericDrugId == null ||
+            !generics.any(
+              (GenericDrug value) => value.id == _selectedGenericDrugId,
+            ))) {
+      _selectedGenericDrugId = generics.first.id;
+    }
+    final bool requiresGeneric = _category != ProductCategory.dietarySupplement;
     final bool canSubmit =
         access != null &&
         access.canManageDrafts &&
         classes.isNotEmpty &&
+        (!requiresGeneric || _selectedGenericDrugId != null) &&
         _brandNameController.text.trim().isNotEmpty &&
         !_isSubmitting;
 
@@ -607,6 +628,28 @@ class _CreateDraftSheetState extends ConsumerState<_CreateDraftSheet> {
                             _category = value;
                           });
                         }
+                      },
+                    ),
+                    const SizedBox(height: 14),
+                    _DraftDropdown<String>(
+                      label: 'Generic drug',
+                      value: _selectedGenericDrugId,
+                      items: generics
+                          .map((GenericDrug value) => value.id)
+                          .toList(),
+                      itemLabel: (String value) {
+                        final GenericDrug generic = generics.firstWhere(
+                          (GenericDrug candidate) => candidate.id == value,
+                        );
+                        return _taxonomyName(
+                          generic.translations,
+                          generic.code,
+                        );
+                      },
+                      onChanged: (String? value) {
+                        setState(() {
+                          _selectedGenericDrugId = value;
+                        });
                       },
                     ),
                     const SizedBox(height: 14),

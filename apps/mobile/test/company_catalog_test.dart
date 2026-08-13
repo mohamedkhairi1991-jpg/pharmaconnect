@@ -116,7 +116,43 @@ void main() {
     expect(find.text('Create product draft'), findsWidgets);
     expect(find.text('English brand name'), findsOneWidget);
     expect(find.text('Product category'), findsOneWidget);
+    expect(find.text('Generic drug'), findsOneWidget);
     expect(find.text('Drug class'), findsOneWidget);
+  });
+
+  testWidgets('create draft supplies the selected generic drug', (
+    WidgetTester tester,
+  ) async {
+    final _FakeCompanyCatalogRepository repository =
+        _FakeCompanyCatalogRepository();
+    await _pumpCompanyCatalog(
+      tester,
+      repository: repository,
+      includeDraftProviders: true,
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('company-create-draft-button')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextField, 'English brand name'),
+      'Nexora Lifecycle Demo',
+    );
+    final Finder createButton = find.widgetWithText(
+      FilledButton,
+      'Create draft',
+    );
+    await tester.ensureVisible(createButton);
+    await tester.pumpAndSettle();
+    await tester.tap(createButton);
+    await tester.pumpAndSettle();
+
+    expect(repository.createdCommand, isNotNull);
+    expect(repository.createdCommand?.genericDrugId, 'bisoprolol-id');
+    expect(
+      repository.createdCommand?.englishBrandName,
+      'Nexora Lifecycle Demo',
+    );
   });
 
   testWidgets('draft detail is editable and submitted detail is read-only', (
@@ -205,7 +241,9 @@ Future<void> _pumpCompanyCatalog(
       AsyncData<List<DrugClass>>(<DrugClass>[_drugClass()]),
     ),
     catalogGenericDrugsProvider.overrideWithValue(
-      const AsyncData<List<GenericDrug>>(<GenericDrug>[]),
+      AsyncData<List<GenericDrug>>(
+        includeDraftProviders ? <GenericDrug>[_genericDrug()] : <GenericDrug>[],
+      ),
     ),
     catalogSpecialtiesProvider.overrideWithValue(
       const AsyncData<List<ProductSpecialty>>(<ProductSpecialty>[]),
@@ -251,6 +289,20 @@ DrugClass _drugClass() => DrugClass(
       name: 'Respiratory',
     ),
   ),
+);
+
+GenericDrug _genericDrug() => GenericDrug(
+  id: 'bisoprolol-id',
+  code: 'bisoprolol',
+  drugClass: _drugClass(),
+  isActive: true,
+  translations: const LocalizedContent<TaxonomyTranslation>(
+    english: TaxonomyTranslation(
+      locale: ContentLocale.english,
+      name: 'Bisoprolol',
+    ),
+  ),
+  composition: const <GenericCompositionEntry>[],
 );
 
 ProductSummary _productSummary({
@@ -330,6 +382,13 @@ final class _FakeCompanyCatalogRepository implements CompanyCatalogRepository {
   final ProductDetail? detail;
   final Object? listError;
   final Completer<List<ProductSummary>>? listCompleter;
+  CreateProductDraftCommand? createdCommand;
+
+  @override
+  Future<ProductDetail> createDraft(CreateProductDraftCommand command) async {
+    createdCommand = command;
+    return _productDetail(brandName: command.englishBrandName);
+  }
 
   @override
   Future<List<ProductSummary>> listOwnProducts({
