@@ -175,6 +175,8 @@ void main() {
     expect(find.text('Product completion'), findsOneWidget);
     expect(find.text('Save workflow changes'), findsOneWidget);
     expect(find.text('Ready for review'), findsOneWidget);
+    expect(find.text('Upload image'), findsNWidgets(2));
+    expect(find.text('Upload PDF'), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pumpAndSettle();
@@ -196,6 +198,8 @@ void main() {
     expect(find.text('Read-only workflow item'), findsOneWidget);
     expect(find.text('Save workflow changes'), findsNothing);
     expect(find.text('Submit for review'), findsNothing);
+    expect(find.text('Upload image'), findsNothing);
+    expect(find.text('Upload PDF'), findsNothing);
   });
 
   testWidgets('company catalog avoids excluded commercial terminology', (

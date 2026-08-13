@@ -1,4 +1,18 @@
+import 'dart:typed_data';
+
 import '../catalog_enums.dart';
+
+final class CatalogUploadFile {
+  const CatalogUploadFile({
+    required this.fileName,
+    required this.mimeType,
+    required this.bytes,
+  });
+
+  final String fileName;
+  final String mimeType;
+  final Uint8List bytes;
+}
 
 final class ProductListRequest {
   const ProductListRequest({

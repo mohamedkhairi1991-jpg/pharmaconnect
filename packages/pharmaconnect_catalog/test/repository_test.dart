@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pharmaconnect_catalog/pharmaconnect_catalog.dart';
 
@@ -127,6 +129,62 @@ void main() {
     });
   });
 
+  test('company media upload stores bytes before recording metadata', () async {
+    final _FakeCatalogDataSource source = _FakeCatalogDataSource()
+      ..rpcResponses.add(null)
+      ..singleResponses.add(publishedProductJson()..['status'] = 'draft');
+    final _FakeCatalogStorageDataSource storage =
+        _FakeCatalogStorageDataSource();
+    final SupabaseCompanyCatalogRepository repository =
+        SupabaseCompanyCatalogRepository(source, storage);
+
+    await repository.uploadProductMedia(
+      productId: 'product-id',
+      type: ProductMediaType.productImage,
+      file: CatalogUploadFile(
+        fileName: 'product.webp',
+        mimeType: 'image/webp',
+        bytes: Uint8List.fromList(<int>[1, 2, 3]),
+      ),
+    );
+
+    expect(storage.uploads, hasLength(1));
+    expect(storage.uploads.single.bucket, 'catalog-product-media');
+    expect(storage.uploads.single.path, startsWith('product-id/'));
+    expect(source.rpcCalls.single.name, CatalogRpcNames.upsertProductMediaMetadata);
+    expect(source.rpcCalls.single.params['p_storage_path'], storage.uploads.single.path);
+    expect(source.rpcCalls.single.params['p_is_primary'], isTrue);
+  });
+
+  test('invalid catalog upload fails before storage is called', () async {
+    final _FakeCatalogDataSource source = _FakeCatalogDataSource();
+    final _FakeCatalogStorageDataSource storage =
+        _FakeCatalogStorageDataSource();
+    final SupabaseCompanyCatalogRepository repository =
+        SupabaseCompanyCatalogRepository(source, storage);
+
+    await expectLater(
+      repository.uploadProductMedia(
+        productId: 'product-id',
+        type: ProductMediaType.productImage,
+        file: CatalogUploadFile(
+          fileName: 'unsafe.exe',
+          mimeType: 'application/octet-stream',
+          bytes: Uint8List.fromList(<int>[1]),
+        ),
+      ),
+      throwsA(
+        isA<CatalogFailure>().having(
+          (CatalogFailure failure) => failure.kind,
+          'kind',
+          CatalogFailureKind.validation,
+        ),
+      ),
+    );
+    expect(storage.uploads, isEmpty);
+    expect(source.rpcCalls, isEmpty);
+  });
+
   test('RPC one-row list response is supported', () async {
     final _FakeCatalogDataSource source = _FakeCatalogDataSource()
       ..rpcResponses.add(<Object?>[
@@ -253,6 +311,34 @@ final class _RpcCall {
 
   final String name;
   final Map<String, Object?> params;
+}
+
+final class _StorageUpload {
+  const _StorageUpload(this.bucket, this.path, this.mimeType);
+
+  final String bucket;
+  final String path;
+  final String mimeType;
+}
+
+final class _FakeCatalogStorageDataSource implements CatalogStorageDataSource {
+  final List<_StorageUpload> uploads = <_StorageUpload>[];
+  final List<_StorageUpload> removals = <_StorageUpload>[];
+
+  @override
+  Future<void> uploadBinary({
+    required String bucket,
+    required String path,
+    required Uint8List bytes,
+    required String mimeType,
+  }) async {
+    uploads.add(_StorageUpload(bucket, path, mimeType));
+  }
+
+  @override
+  Future<void> remove({required String bucket, required String path}) async {
+    removals.add(_StorageUpload(bucket, path, ''));
+  }
 }
 
 final class _FakeCatalogDataSource implements CatalogDataSource {

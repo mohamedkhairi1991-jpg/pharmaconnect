@@ -39,6 +39,20 @@ CatalogFailure mapCatalogError(Object error, [StackTrace? stackTrace]) {
       stackTrace: stackTrace,
     );
   }
+  if (error is StorageException) {
+    final CatalogFailureKind kind = switch (error.statusCode) {
+      '401' => CatalogFailureKind.unauthenticated,
+      '403' => CatalogFailureKind.unauthorized,
+      '409' => CatalogFailureKind.conflict,
+      _ => CatalogFailureKind.unexpected,
+    };
+    return CatalogFailure(
+      kind: kind,
+      diagnosticCode: error.statusCode,
+      cause: error,
+      stackTrace: stackTrace,
+    );
+  }
   if (error is SocketException ||
       error is TimeoutException ||
       error is AuthRetryableFetchException) {

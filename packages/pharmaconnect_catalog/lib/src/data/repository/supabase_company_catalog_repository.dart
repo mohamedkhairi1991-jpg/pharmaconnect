@@ -1,5 +1,8 @@
+import 'dart:math';
+
 import '../../domain/catalog_enums.dart';
 import '../../domain/failure/catalog_failure.dart';
+import '../../domain/product/product_brochure_metadata.dart';
 import '../../domain/product/product_detail.dart';
 import '../../domain/product/product_summary.dart';
 import '../../domain/readiness/catalog_readiness_evaluator.dart';
@@ -14,9 +17,18 @@ import 'repository_support.dart';
 
 final class SupabaseCompanyCatalogRepository
     implements CompanyCatalogRepository {
-  const SupabaseCompanyCatalogRepository(this._source);
+  SupabaseCompanyCatalogRepository(
+    this._source, [
+    CatalogStorageDataSource? storage,
+  ]) : _storage = storage;
 
   final CatalogDataSource _source;
+  final CatalogStorageDataSource? _storage;
+
+  static const String _mediaBucket = 'catalog-product-media';
+  static const String _brochureBucket = 'catalog-brochures';
+  static const int _maxMediaBytes = 10 * 1024 * 1024;
+  static const int _maxBrochureBytes = 25 * 1024 * 1024;
 
   @override
   Future<ProductDetail> archiveOwnProduct(String productId, String reason) {
@@ -139,6 +151,100 @@ final class SupabaseCompanyCatalogRepository
   }
 
   @override
+  Future<ProductDetail> uploadProductMedia({
+    required String productId,
+    required ProductMediaType type,
+    required CatalogUploadFile file,
+  }) => guardCatalogCall(() async {
+    _validateUploadFile(
+      file,
+      allowedMimeTypes: const <String>{
+        'image/jpeg',
+        'image/png',
+        'image/webp',
+      },
+      maxBytes: _maxMediaBytes,
+    );
+    final CatalogStorageDataSource storage = _requireStorage();
+    final String path = _storagePath(productId, file.mimeType);
+    await storage.uploadBinary(
+      bucket: _mediaBucket,
+      path: path,
+      bytes: file.bytes,
+      mimeType: file.mimeType,
+    );
+    try {
+      return await upsertMediaMetadata(
+        ProductMediaMetadataCommand(
+          productId: productId,
+          type: type,
+          storagePath: path,
+          mimeType: file.mimeType,
+          fileSizeBytes: file.bytes.length,
+          sortOrder: 0,
+          isPrimary: true,
+        ),
+      );
+    } on Object {
+      await _removeFailedUpload(storage, _mediaBucket, path);
+      rethrow;
+    }
+  });
+
+  @override
+  Future<ProductDetail> uploadBrochure({
+    required String productId,
+    required ContentLocale locale,
+    required String title,
+    required CatalogUploadFile file,
+  }) => guardCatalogCall(() async {
+    _validateUploadFile(
+      file,
+      allowedMimeTypes: const <String>{'application/pdf'},
+      maxBytes: _maxBrochureBytes,
+    );
+    if (title.trim().isEmpty) {
+      throw const CatalogFailure(
+        kind: CatalogFailureKind.validation,
+        diagnosticCode: 'brochure_title_missing',
+      );
+    }
+    final ProductDetail current = await getOwnProductDetail(productId);
+    final int nextVersion = current.brochures
+            .where(
+              (ProductBrochureMetadata brochure) => brochure.locale == locale,
+            )
+            .fold<int>(0, (int value, ProductBrochureMetadata brochure) {
+              return max(value, brochure.version);
+            }) +
+        1;
+    final CatalogStorageDataSource storage = _requireStorage();
+    final String path = _storagePath(productId, file.mimeType);
+    await storage.uploadBinary(
+      bucket: _brochureBucket,
+      path: path,
+      bytes: file.bytes,
+      mimeType: file.mimeType,
+    );
+    try {
+      return await upsertBrochureMetadata(
+        ProductBrochureMetadataCommand(
+          productId: productId,
+          locale: locale,
+          title: title.trim(),
+          storagePath: path,
+          fileSizeBytes: file.bytes.length,
+          version: nextVersion,
+          isCurrent: true,
+        ),
+      );
+    } on Object {
+      await _removeFailedUpload(storage, _brochureBucket, path);
+      rethrow;
+    }
+  });
+
+  @override
   Future<ProductDetail> upsertIraqMarket(ProductMarketCommand command) {
     return _mutate(CatalogRpcNames.upsertProductMarket, <String, Object?>{
       'p_product_id': command.productId,
@@ -248,5 +354,57 @@ final class SupabaseCompanyCatalogRepository
   ) async {
     final ProductDetail product = await getOwnProductDetail(productId);
     return CatalogReadinessEvaluator.evaluate(product, stage);
+  }
+
+  CatalogStorageDataSource _requireStorage() {
+    final CatalogStorageDataSource? storage = _storage;
+    if (storage == null) {
+      throw const CatalogFailure(
+        kind: CatalogFailureKind.serviceUnavailable,
+        diagnosticCode: 'catalog_storage_unavailable',
+      );
+    }
+    return storage;
+  }
+
+  void _validateUploadFile(
+    CatalogUploadFile file, {
+    required Set<String> allowedMimeTypes,
+    required int maxBytes,
+  }) {
+    if (file.fileName.trim().isEmpty ||
+        file.bytes.isEmpty ||
+        file.bytes.length > maxBytes ||
+        !allowedMimeTypes.contains(file.mimeType.toLowerCase())) {
+      throw const CatalogFailure(
+        kind: CatalogFailureKind.validation,
+        diagnosticCode: 'invalid_catalog_upload',
+      );
+    }
+  }
+
+  Future<void> _removeFailedUpload(
+    CatalogStorageDataSource storage,
+    String bucket,
+    String path,
+  ) async {
+    try {
+      await storage.remove(bucket: bucket, path: path);
+    } on Object {
+      // Preserve the authoritative metadata failure for the caller.
+    }
+  }
+
+  String _storagePath(String productId, String mimeType) {
+    final String extension = switch (mimeType.toLowerCase()) {
+      'image/jpeg' => 'jpg',
+      'image/png' => 'png',
+      'image/webp' => 'webp',
+      'application/pdf' => 'pdf',
+      _ => 'bin',
+    };
+    final String nonce =
+        '${DateTime.now().microsecondsSinceEpoch}-${Random.secure().nextInt(1 << 32)}';
+    return '$productId/$nonce.$extension';
   }
 }
