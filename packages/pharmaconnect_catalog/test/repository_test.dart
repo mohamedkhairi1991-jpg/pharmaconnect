@@ -151,8 +151,14 @@ void main() {
     expect(storage.uploads, hasLength(1));
     expect(storage.uploads.single.bucket, 'catalog-product-media');
     expect(storage.uploads.single.path, startsWith('product-id/'));
-    expect(source.rpcCalls.single.name, CatalogRpcNames.upsertProductMediaMetadata);
-    expect(source.rpcCalls.single.params['p_storage_path'], storage.uploads.single.path);
+    expect(
+      source.rpcCalls.single.name,
+      CatalogRpcNames.upsertProductMediaMetadata,
+    );
+    expect(
+      source.rpcCalls.single.params['p_storage_path'],
+      storage.uploads.single.path,
+    );
     expect(source.rpcCalls.single.params['p_is_primary'], isTrue);
   });
 
@@ -251,6 +257,29 @@ void main() {
   });
 
   test(
+    'admin media review creates a short-lived URL in the correct bucket',
+    () async {
+      final _FakeCatalogDataSource source = _FakeCatalogDataSource();
+      final _FakeCatalogStorageDataSource storage =
+          _FakeCatalogStorageDataSource();
+      final SupabaseAdminCatalogRepository repository =
+          SupabaseAdminCatalogRepository(source, storage);
+
+      final Uri result = await repository.createMediaReviewUrl(
+        const CatalogMediaAccessRequest(
+          kind: CatalogMediaAssetKind.brochure,
+          storagePath: 'product-id/brochure.pdf',
+        ),
+      );
+
+      expect(result, Uri.parse('https://example.test/signed-file'));
+      expect(storage.signedUrlRequests.single.bucket, 'catalog-brochures');
+      expect(storage.signedUrlRequests.single.path, 'product-id/brochure.pdf');
+      expect(storage.signedUrlRequests.single.expiresInSeconds, 300);
+    },
+  );
+
+  test(
     'taxonomy repository uses centralized table and projection constants',
     () async {
       final _FakeCatalogDataSource source = _FakeCatalogDataSource()
@@ -321,9 +350,28 @@ final class _StorageUpload {
   final String mimeType;
 }
 
+final class _SignedUrlRequest {
+  const _SignedUrlRequest(this.bucket, this.path, this.expiresInSeconds);
+
+  final String bucket;
+  final String path;
+  final int expiresInSeconds;
+}
+
 final class _FakeCatalogStorageDataSource implements CatalogStorageDataSource {
   final List<_StorageUpload> uploads = <_StorageUpload>[];
   final List<_StorageUpload> removals = <_StorageUpload>[];
+  final List<_SignedUrlRequest> signedUrlRequests = <_SignedUrlRequest>[];
+
+  @override
+  Future<Uri> createSignedUrl({
+    required String bucket,
+    required String path,
+    required int expiresInSeconds,
+  }) async {
+    signedUrlRequests.add(_SignedUrlRequest(bucket, path, expiresInSeconds));
+    return Uri.parse('https://example.test/signed-file');
+  }
 
   @override
   Future<void> uploadBinary({

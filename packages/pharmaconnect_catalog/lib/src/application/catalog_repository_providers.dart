@@ -45,8 +45,10 @@ final Provider<CompanyCatalogRepository> companyCatalogRepositoryProvider =
 
 final Provider<AdminCatalogRepository> adminCatalogRepositoryProvider =
     Provider<AdminCatalogRepository>(
-      (Ref ref) =>
-          SupabaseAdminCatalogRepository(ref.watch(_catalogDataSourceProvider)),
+      (Ref ref) => SupabaseAdminCatalogRepository(
+        ref.watch(_catalogDataSourceProvider),
+        ref.watch(_catalogStorageDataSourceProvider),
+      ),
     );
 
 final Provider<CatalogTaxonomyRepository> catalogTaxonomyRepositoryProvider =

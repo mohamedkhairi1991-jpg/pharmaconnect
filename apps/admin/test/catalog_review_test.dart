@@ -119,6 +119,34 @@ void main() {
     );
   });
 
+  testWidgets('admin review detail renders secure media review controls', (
+    WidgetTester tester,
+  ) async {
+    await _pumpReviewQueue(
+      tester,
+      repository: _FakeAdminCatalogRepository(
+        products: <ProductSummary>[_productSummary()],
+        detail: _productDetail(withMedia: true),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final Finder openReview = find.byKey(
+      const Key('admin-open-review-product-id'),
+    );
+    await tester.ensureVisible(openReview);
+    await tester.tap(openReview);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Media review'), findsOneWidget);
+    expect(find.text('Product Image'), findsOneWidget);
+    expect(find.text('Official product brochure'), findsOneWidget);
+    expect(find.text('Open full image'), findsOneWidget);
+    expect(find.text('Open secure PDF'), findsOneWidget);
+    expect(find.textContaining('media/product.jpg'), findsNothing);
+    expect(find.textContaining('brochures/product.pdf'), findsNothing);
+  });
+
   testWidgets('non-submitted product detail remains read-only', (
     WidgetTester tester,
   ) async {
@@ -264,6 +292,7 @@ ProductDetail _productDetail({
   String brandName = 'Cardiostead 5 mg',
   String genericName = 'Bisoprolol',
   ProductLifecycleStatus status = ProductLifecycleStatus.submitted,
+  bool withMedia = false,
 }) {
   final DateTime timestamp = DateTime.utc(2026, 7, 17);
   final DrugClass drugClass = DrugClass(
@@ -339,8 +368,40 @@ ProductDetail _productDetail({
       ),
     ),
     markets: <ProductMarket>[market],
-    media: const <ProductMediaMetadata>[],
-    brochures: const <ProductBrochureMetadata>[],
+    media: withMedia
+        ? <ProductMediaMetadata>[
+            ProductMediaMetadata(
+              id: '$id-media',
+              type: ProductMediaType.productImage,
+              storagePath: '$id/media/product.jpg',
+              mimeType: 'image/jpeg',
+              fileSizeBytes: 2048,
+              sortOrder: 0,
+              isPrimary: true,
+              uploadedBy: 'company-profile-id',
+              createdAt: timestamp,
+              updatedAt: timestamp,
+            ),
+          ]
+        : const <ProductMediaMetadata>[],
+    brochures: withMedia
+        ? <ProductBrochureMetadata>[
+            ProductBrochureMetadata(
+              id: '$id-brochure',
+              productMarketId: market.id,
+              locale: ContentLocale.english,
+              title: 'Official product brochure',
+              storagePath: '$id/brochures/product.pdf',
+              mimeType: 'application/pdf',
+              fileSizeBytes: 4096,
+              version: 1,
+              isCurrent: true,
+              uploadedBy: 'company-profile-id',
+              createdAt: timestamp,
+              updatedAt: timestamp,
+            ),
+          ]
+        : const <ProductBrochureMetadata>[],
     createdAt: timestamp,
     updatedAt: timestamp,
   );
@@ -375,6 +436,11 @@ final class _FakeAdminCatalogRepository implements AdminCatalogRepository {
   @override
   Future<ProductDetail> getProductDetail(String productId) async {
     return detail ?? _productDetail(id: productId);
+  }
+
+  @override
+  Future<Uri> createMediaReviewUrl(CatalogMediaAccessRequest request) async {
+    return Uri.https('example.test', '/secure/${request.storagePath}');
   }
 
   @override

@@ -1,6 +1,7 @@
 import '../access/catalog_company_access.dart';
 import '../access/healthcare_professional_eligibility_summary.dart';
 import '../catalog_enums.dart';
+import '../product/catalog_media_access_request.dart';
 import '../product/product_detail.dart';
 import '../product/product_summary.dart';
 import '../readiness/catalog_readiness_result.dart';
@@ -100,6 +101,8 @@ abstract interface class AdminCatalogRepository {
   );
 
   Future<ProductDetail> getProductDetail(String productId);
+
+  Future<Uri> createMediaReviewUrl(CatalogMediaAccessRequest request);
 
   Future<ProductDetail> requestChanges(String productId, String reason);
 

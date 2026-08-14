@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../domain/catalog_enums.dart';
+import '../domain/product/catalog_media_access_request.dart';
 import '../domain/product/product_detail.dart';
 import '../domain/product/product_summary.dart';
 import '../domain/readiness/catalog_readiness_result.dart';
@@ -128,6 +129,19 @@ final adminProductDetailProvider = FutureProvider.family<ProductDetail, String>(
         .getProductDetail(productId);
   },
 );
+
+final adminCatalogMediaUrlProvider = FutureProvider.autoDispose
+    .family<Uri, CatalogMediaAccessRequest>((
+      Ref ref,
+      CatalogMediaAccessRequest request,
+    ) async {
+      requireAdministratorAccess(
+        await ref.watch(catalogAccessStateProvider.future),
+      );
+      return ref
+          .watch(adminCatalogRepositoryProvider)
+          .createMediaReviewUrl(request);
+    });
 
 final catalogDrugClassesProvider = FutureProvider<List<DrugClass>>((
   Ref ref,
