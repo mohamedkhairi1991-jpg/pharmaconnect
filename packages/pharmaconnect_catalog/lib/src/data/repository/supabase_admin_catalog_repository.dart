@@ -1,4 +1,6 @@
 import '../../domain/catalog_enums.dart';
+import '../../domain/failure/catalog_failure.dart';
+import '../../domain/product/catalog_media_access_request.dart';
 import '../../domain/product/product_detail.dart';
 import '../../domain/product/product_summary.dart';
 import '../../domain/repository/catalog_repositories.dart';
@@ -8,9 +10,14 @@ import '../source/catalog_data_source.dart';
 import 'repository_support.dart';
 
 final class SupabaseAdminCatalogRepository implements AdminCatalogRepository {
-  const SupabaseAdminCatalogRepository(this._source);
+  const SupabaseAdminCatalogRepository(this._source, [this._storage]);
 
   final CatalogDataSource _source;
+  final CatalogStorageDataSource? _storage;
+
+  static const int _reviewUrlLifetimeSeconds = 300;
+  static const String _mediaBucket = 'catalog-product-media';
+  static const String _brochureBucket = 'catalog-brochures';
 
   @override
   Future<ProductDetail> archive(String productId, String reason) => _mutate(
@@ -22,6 +29,33 @@ final class SupabaseAdminCatalogRepository implements AdminCatalogRepository {
   @override
   Future<ProductDetail> getProductDetail(String productId) {
     return readProductDetail(_source, productId);
+  }
+
+  @override
+  Future<Uri> createMediaReviewUrl(CatalogMediaAccessRequest request) {
+    final String path = request.storagePath.trim();
+    if (path.isEmpty) {
+      throw const CatalogFailure(
+        kind: CatalogFailureKind.validation,
+        diagnosticCode: 'catalog_media_path_missing',
+      );
+    }
+    final CatalogStorageDataSource? storage = _storage;
+    if (storage == null) {
+      throw const CatalogFailure(
+        kind: CatalogFailureKind.serviceUnavailable,
+        diagnosticCode: 'catalog_storage_unavailable',
+      );
+    }
+    final String bucket = switch (request.kind) {
+      CatalogMediaAssetKind.productMedia => _mediaBucket,
+      CatalogMediaAssetKind.brochure => _brochureBucket,
+    };
+    return storage.createSignedUrl(
+      bucket: bucket,
+      path: path,
+      expiresInSeconds: _reviewUrlLifetimeSeconds,
+    );
   }
 
   @override

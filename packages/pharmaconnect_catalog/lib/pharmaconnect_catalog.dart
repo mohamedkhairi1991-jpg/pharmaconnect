@@ -25,6 +25,7 @@ export 'src/domain/catalog_enums.dart';
 export 'src/domain/company/catalog_company_summary.dart';
 export 'src/domain/failure/catalog_failure.dart';
 export 'src/domain/localization/localized_content.dart';
+export 'src/domain/product/catalog_media_access_request.dart';
 export 'src/domain/product/product_brochure_metadata.dart';
 export 'src/domain/product/product_detail.dart';
 export 'src/domain/product/product_lifecycle_metadata.dart';

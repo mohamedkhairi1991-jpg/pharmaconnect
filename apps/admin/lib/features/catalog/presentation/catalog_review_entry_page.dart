@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pharmaconnect_catalog/pharmaconnect_catalog.dart';
 import 'package:pharmaconnect_design_system/pharmaconnect_design_system.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 const double _adminReviewWideBreakpoint = 900;
 
@@ -764,14 +765,8 @@ class _AdminProductReviewDetailContent extends ConsumerWidget {
           icon: Icons.assignment_outlined,
           rows: data.reviewRows,
         ),
-        if (data.metadataRows.isNotEmpty) ...<Widget>[
-          const SizedBox(height: PharmaConnectSpacing.medium),
-          _ReviewDetailSection(
-            title: 'Media and brochure metadata',
-            icon: Icons.perm_media_outlined,
-            rows: data.metadataRows,
-          ),
-        ],
+        const SizedBox(height: PharmaConnectSpacing.medium),
+        _AdminMediaReviewSection(product: product),
         const SizedBox(height: PharmaConnectSpacing.medium),
         _ReviewLifecycleActions(product: product),
       ],
@@ -932,6 +927,335 @@ class _ReviewDetailTextSection extends StatelessWidget {
           .toList(growable: false),
     );
   }
+}
+
+class _AdminMediaReviewSection extends StatelessWidget {
+  const _AdminMediaReviewSection({required this.product});
+
+  final ProductDetail product;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final List<Widget> assets = <Widget>[
+      for (final ProductMediaMetadata media in product.media)
+        _AdminMediaAssetCard(
+          key: Key('admin-media-review-${media.id}'),
+          title: _readableCatalogValue(media.type.databaseValue),
+          mimeType: media.mimeType,
+          fileSizeBytes: media.fileSizeBytes,
+          isPrimary: media.isPrimary,
+          isImage: true,
+          request: CatalogMediaAccessRequest(
+            kind: CatalogMediaAssetKind.productMedia,
+            storagePath: media.storagePath,
+          ),
+        ),
+      for (final ProductBrochureMetadata brochure in product.brochures)
+        _AdminMediaAssetCard(
+          key: Key('admin-brochure-review-${brochure.id}'),
+          title: brochure.title,
+          mimeType: brochure.mimeType,
+          fileSizeBytes: brochure.fileSizeBytes,
+          isPrimary: brochure.isCurrent,
+          isImage: false,
+          request: CatalogMediaAccessRequest(
+            kind: CatalogMediaAssetKind.brochure,
+            storagePath: brochure.storagePath,
+          ),
+        ),
+    ];
+
+    return Container(
+      decoration: BoxDecoration(
+        color: PharmaConnectColors.surface,
+        borderRadius: BorderRadius.circular(PharmaConnectRadii.card),
+        border: Border.all(color: PharmaConnectColors.subtleBorder),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(PharmaConnectSpacing.large),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: PharmaConnectColors.unresolvedContainer,
+                    borderRadius: BorderRadius.circular(
+                      PharmaConnectRadii.control,
+                    ),
+                    border: Border.all(
+                      color: PharmaConnectColors.unresolvedBorder,
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.perm_media_outlined,
+                    size: 19,
+                    color: PharmaConnectColors.linkFocus,
+                  ),
+                ),
+                const SizedBox(width: PharmaConnectSpacing.compact),
+                Expanded(
+                  child: Text(
+                    'Media review',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: PharmaConnectColors.primaryText,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: PharmaConnectSpacing.small),
+            Text(
+              'Secure previews expire after five minutes and remain subject '
+              'to administrator access controls.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: PharmaConnectColors.secondaryText,
+              ),
+            ),
+            const SizedBox(height: PharmaConnectSpacing.medium),
+            if (assets.isEmpty)
+              const _ReviewQueueStateCard(
+                icon: Icons.image_not_supported_outlined,
+                title: 'No media submitted',
+                message:
+                    'This product has no image or brochure files to review.',
+                presentation: PharmaConnectSemanticStatusMapper.neutral,
+              )
+            else
+              LayoutBuilder(
+                builder: (BuildContext context, BoxConstraints constraints) {
+                  final bool useGrid = constraints.maxWidth >= 680;
+                  if (!useGrid) {
+                    return Column(
+                      children: <Widget>[
+                        for (int index = 0; index < assets.length; index++) ...[
+                          assets[index],
+                          if (index != assets.length - 1)
+                            const SizedBox(height: PharmaConnectSpacing.small),
+                        ],
+                      ],
+                    );
+                  }
+                  return Wrap(
+                    spacing: PharmaConnectSpacing.small,
+                    runSpacing: PharmaConnectSpacing.small,
+                    children: assets
+                        .map(
+                          (Widget asset) => SizedBox(
+                            width:
+                                (constraints.maxWidth -
+                                    PharmaConnectSpacing.small) /
+                                2,
+                            child: asset,
+                          ),
+                        )
+                        .toList(growable: false),
+                  );
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AdminMediaAssetCard extends ConsumerWidget {
+  const _AdminMediaAssetCard({
+    super.key,
+    required this.title,
+    required this.mimeType,
+    required this.fileSizeBytes,
+    required this.isPrimary,
+    required this.isImage,
+    required this.request,
+  });
+
+  final String title;
+  final String mimeType;
+  final int fileSizeBytes;
+  final bool isPrimary;
+  final bool isImage;
+  final CatalogMediaAccessRequest request;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ThemeData theme = Theme.of(context);
+    final AsyncValue<Uri> access = ref.watch(
+      adminCatalogMediaUrlProvider(request),
+    );
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: PharmaConnectColors.elevatedSurface,
+        borderRadius: BorderRadius.circular(PharmaConnectRadii.control),
+        border: Border.all(color: PharmaConnectColors.subtleBorder),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(PharmaConnectSpacing.medium),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                Icon(
+                  isImage
+                      ? Icons.image_outlined
+                      : Icons.picture_as_pdf_outlined,
+                  color: PharmaConnectColors.linkFocus,
+                ),
+                const SizedBox(width: PharmaConnectSpacing.small),
+                Expanded(
+                  child: Text(
+                    title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      color: PharmaConnectColors.primaryText,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                if (isPrimary)
+                  const _StatusChip(
+                    label: 'Current',
+                    presentation: PharmaConnectSemanticStatusMapper.success,
+                  ),
+              ],
+            ),
+            const SizedBox(height: PharmaConnectSpacing.small),
+            Text(
+              '$mimeType • ${_formatFileSize(fileSizeBytes)}',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: PharmaConnectColors.secondaryText,
+              ),
+            ),
+            const SizedBox(height: PharmaConnectSpacing.medium),
+            switch (access) {
+              AsyncData<Uri>(:final value) =>
+                isImage
+                    ? _AdminImagePreview(uri: value)
+                    : _SecureMediaOpenButton(uri: value, isImage: false),
+              AsyncError<Uri>() => Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  Text(
+                    'Secure preview could not load.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: PharmaConnectColors.error,
+                    ),
+                  ),
+                  const SizedBox(height: PharmaConnectSpacing.small),
+                  OutlinedButton.icon(
+                    onPressed: () =>
+                        ref.invalidate(adminCatalogMediaUrlProvider(request)),
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Retry secure preview'),
+                  ),
+                ],
+              ),
+              _ => const Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  LinearProgressIndicator(),
+                  SizedBox(height: PharmaConnectSpacing.small),
+                  Text('Preparing secure preview…'),
+                ],
+              ),
+            },
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AdminImagePreview extends StatelessWidget {
+  const _AdminImagePreview({required this.uri});
+
+  final Uri uri;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        ClipRRect(
+          borderRadius: BorderRadius.circular(PharmaConnectRadii.control),
+          child: ColoredBox(
+            color: PharmaConnectColors.canvas,
+            child: Image.network(
+              uri.toString(),
+              height: 180,
+              fit: BoxFit.contain,
+              errorBuilder: (_, _, _) => const SizedBox(
+                height: 180,
+                child: Center(child: Text('Image preview unavailable')),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: PharmaConnectSpacing.small),
+        _SecureMediaOpenButton(uri: uri, isImage: true),
+      ],
+    );
+  }
+}
+
+class _SecureMediaOpenButton extends StatelessWidget {
+  const _SecureMediaOpenButton({required this.uri, required this.isImage});
+
+  final Uri uri;
+  final bool isImage;
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton.icon(
+      onPressed: () => _open(context),
+      icon: const Icon(Icons.open_in_new),
+      label: Text(isImage ? 'Open full image' : 'Open secure PDF'),
+    );
+  }
+
+  Future<void> _open(BuildContext context) async {
+    try {
+      final bool opened = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!opened && context.mounted) {
+        _showMediaOpenFailure(context);
+      }
+    } on Object {
+      if (context.mounted) {
+        _showMediaOpenFailure(context);
+      }
+    }
+  }
+}
+
+void _showMediaOpenFailure(BuildContext context) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text('The secure file could not be opened. Please try again.'),
+    ),
+  );
+}
+
+String _formatFileSize(int bytes) {
+  if (bytes < 1024) {
+    return '$bytes B';
+  }
+  final double kilobytes = bytes / 1024;
+  if (kilobytes < 1024) {
+    return '${kilobytes.toStringAsFixed(kilobytes >= 10 ? 0 : 1)} KB';
+  }
+  final double megabytes = kilobytes / 1024;
+  return '${megabytes.toStringAsFixed(megabytes >= 10 ? 0 : 1)} MB';
 }
 
 class _ReviewDetailRowView extends StatelessWidget {
@@ -1319,7 +1643,6 @@ final class _AdminProductDetailDisplay {
     required this.marketRows,
     required this.clinicalRows,
     required this.reviewRows,
-    required this.metadataRows,
   });
 
   final String brandName;
@@ -1335,7 +1658,6 @@ final class _AdminProductDetailDisplay {
   final List<_ReviewDetailRow> marketRows;
   final List<_ReviewDetailRow> clinicalRows;
   final List<_ReviewDetailRow> reviewRows;
-  final List<_ReviewDetailRow> metadataRows;
 
   static _AdminProductDetailDisplay fromProduct(ProductDetail product) {
     final ProductMarket? market = product.iraqMarket;
@@ -1394,19 +1716,6 @@ final class _AdminProductDetailDisplay {
           _formatShortDate(product.lifecycle.submittedAt!),
         ),
     ];
-    final List<_ReviewDetailRow> metadataRows = <_ReviewDetailRow>[
-      if (product.media.isNotEmpty)
-        _ReviewDetailRow(
-          'Media metadata',
-          '${product.media.length} item(s) recorded',
-        ),
-      if (product.brochures.isNotEmpty)
-        _ReviewDetailRow(
-          'Brochure metadata',
-          '${product.brochures.length} document(s) recorded',
-        ),
-    ];
-
     return _AdminProductDetailDisplay(
       brandName: _fallback(
         product.translations.resolve(ContentLocale.english)?.brandName,
@@ -1430,7 +1739,6 @@ final class _AdminProductDetailDisplay {
       marketRows: marketRows,
       clinicalRows: clinicalRows,
       reviewRows: reviewRows,
-      metadataRows: metadataRows,
     );
   }
 

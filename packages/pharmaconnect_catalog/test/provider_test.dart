@@ -321,6 +321,59 @@ void main() {
       },
     );
 
+    test('admin media URL provider requires administrator access', () async {
+      final _FakeAdminCatalogRepository admin = _FakeAdminCatalogRepository();
+      final ProviderContainer denied = ProviderContainer(
+        overrides: [
+          catalogAccessStateProvider.overrideWithValue(
+            const AsyncData<CatalogAccessState>(
+              CatalogAccessState(CatalogAudience.officialCatalog),
+            ),
+          ),
+          adminCatalogRepositoryProvider.overrideWithValue(admin),
+        ],
+      );
+      addTearDown(denied.dispose);
+      const CatalogMediaAccessRequest request = CatalogMediaAccessRequest(
+        kind: CatalogMediaAssetKind.productMedia,
+        storagePath: 'product-id/image.jpg',
+      );
+
+      final AsyncValue<Uri> deniedResult = await _waitForError(
+        denied,
+        adminCatalogMediaUrlProvider(request),
+      );
+
+      expect(
+        deniedResult.error,
+        isA<CatalogFailure>().having(
+          (CatalogFailure failure) => failure.kind,
+          'kind',
+          CatalogFailureKind.unauthorized,
+        ),
+      );
+      expect(admin.mediaReviewCalls, 0);
+
+      final ProviderContainer allowed = ProviderContainer(
+        overrides: [
+          catalogAccessStateProvider.overrideWithValue(
+            const AsyncData<CatalogAccessState>(
+              CatalogAccessState(CatalogAudience.administrator),
+            ),
+          ),
+          adminCatalogRepositoryProvider.overrideWithValue(admin),
+        ],
+      );
+      addTearDown(allowed.dispose);
+
+      final Uri result = await allowed.read(
+        adminCatalogMediaUrlProvider(request).future,
+      );
+
+      expect(result, Uri.parse('https://example.test/secure-media'));
+      expect(admin.mediaReviewCalls, 1);
+    });
+
     test('provider errors preserve CatalogFailure', () async {
       const CatalogFailure failure = CatalogFailure(
         kind: CatalogFailureKind.serviceUnavailable,
@@ -493,12 +546,19 @@ final class _FakeAdminCatalogRepository implements AdminCatalogRepository {
   late ProductDetail detail;
   int requestChangesCalls = 0;
   int detailCalls = 0;
+  int mediaReviewCalls = 0;
   String? lastReason;
 
   @override
   Future<ProductDetail> getProductDetail(String productId) async {
     detailCalls += 1;
     return detail;
+  }
+
+  @override
+  Future<Uri> createMediaReviewUrl(CatalogMediaAccessRequest request) async {
+    mediaReviewCalls += 1;
+    return Uri.parse('https://example.test/secure-media');
   }
 
   @override

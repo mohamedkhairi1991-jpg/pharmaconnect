@@ -33,6 +33,12 @@ abstract interface class CatalogDataSource {
 }
 
 abstract interface class CatalogStorageDataSource {
+  Future<Uri> createSignedUrl({
+    required String bucket,
+    required String path,
+    required int expiresInSeconds,
+  });
+
   Future<void> uploadBinary({
     required String bucket,
     required String path,
@@ -99,6 +105,22 @@ final class SupabaseCatalogStorageDataSource
   const SupabaseCatalogStorageDataSource(this._client);
 
   final SupabaseClient _client;
+
+  @override
+  Future<Uri> createSignedUrl({
+    required String bucket,
+    required String path,
+    required int expiresInSeconds,
+  }) => guardCatalogCall(() async {
+    final String value = await _client.storage
+        .from(bucket)
+        .createSignedUrl(path, expiresInSeconds);
+    final Uri? uri = Uri.tryParse(value);
+    if (uri == null || !uri.hasScheme || uri.host.isEmpty) {
+      throw const FormatException('Invalid catalog media URL.');
+    }
+    return uri;
+  });
 
   @override
   Future<void> uploadBinary({
